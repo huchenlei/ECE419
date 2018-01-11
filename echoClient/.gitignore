@@ -1,4 +1,5 @@
 # ignore the build result for milestone 0
 bin/
+logs/
 echoClient.jar
 MANIFEST.MF
