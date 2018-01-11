@@ -1,0 +1,4 @@
+# ignore the build result for milestone 0
+bin/
+echoServer.jar
+MANIFEST.MF
