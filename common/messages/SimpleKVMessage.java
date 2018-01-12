@@ -7,7 +7,7 @@ package common.messages;
  * key,value,status
  * <p>
  * All ',' character in original data, i.e. key and value,
- * will be escaped by "\," sequence
+ * will be escaped by --," sequence
  * <p>
  * Created by Charlie on 2018-01-12.
  */
@@ -17,7 +17,7 @@ public class SimpleKVMessage extends AbstractKVMessage {
      * specific meaning in regex (e.g. '|', '[', '(', etc can not be used as delim)
      */
     private static final String DELIM = ",";
-    private static final String ESCAPED_DELIM = "\\" + DELIM;
+    private static final String ESCAPED_DELIM = "--" + DELIM;
 
     public SimpleKVMessage() {
         super();
@@ -45,22 +45,24 @@ public class SimpleKVMessage extends AbstractKVMessage {
         }
         return String.join(DELIM,
                 key.replaceAll(DELIM, ESCAPED_DELIM),
-                value.replaceAll(DELIM, ESCAPED_DELIM));
+                value.replaceAll(DELIM, ESCAPED_DELIM),
+                status.toString());
     }
 
     @Override
     public void decode(String data) throws KVMessageException {
         // Use look behind regex to split string
-        // matches all DELIM that is not preceded with '\' character
-        String[] strs = data.split("(?<!\\\\)" + DELIM);
+        // matches all DELIM that is not preceded with "--"
+        String[] strs = data.split("(?<!--)" + DELIM);
 
         if (strs.length != 3) {
             throw new KVMessageException(
-                    "Mal-formatted packet: " + String.valueOf(strs.length) + "segments found");
+                    "Mal-formatted packet: " + String.valueOf(strs.length) + " segments found\n"
+                            + data);
         }
 
-        key = strs[0].replaceAll("\\" + ESCAPED_DELIM, DELIM);
-        value = strs[1].replaceAll("\\" + ESCAPED_DELIM, DELIM);
+        key = strs[0].replaceAll(ESCAPED_DELIM, DELIM);
+        value = strs[1].replaceAll(ESCAPED_DELIM, DELIM);
         status = StatusType.valueOf(strs[2]);
     }
 }

@@ -16,14 +16,17 @@ import java.lang.reflect.Field;
  */
 public class MessageTest extends TestCase {
     private Exception ex;
-    private String simpleDelim;
+    private static String simpleDelim = ",";
 
-    @BeforeClass
-    public void init() throws NoSuchFieldException, IllegalAccessException {
-        Field delimField = SimpleKVMessage.class.getDeclaredField("DELIM");
-        delimField.setAccessible(true);
-        simpleDelim = (String) delimField.get(null); // Pass null here since DELIM is a static field
-    }
+// TODO somehow the @BeforeClass annotation does not work
+// TODO Temporarily hardcode the delim to let other parts of test function
+//    @BeforeClass
+//    public static void init() throws Exception {
+//        Field delimField = SimpleKVMessage.class.getDeclaredField("DELIM");
+//        delimField.setAccessible(true);
+//        simpleDelim = (String) delimField.get(SimpleKVMessage.class); // Pass null here since DELIM is a static field
+//        assert(simpleDelim != null);
+//    }
 
     @Before
     public void preTest() {
@@ -56,7 +59,7 @@ public class MessageTest extends TestCase {
     public void testSimpleKVDecodeSuccess() {
         SimpleKVMessage m = new SimpleKVMessage();
         try {
-            m.decode("test_\\" + simpleDelim + "key,test_\\" + simpleDelim + "value,GET");
+            m.decode("test_--" + simpleDelim + "key,test_--" + simpleDelim + "value,GET");
         } catch (KVMessageException e) {
             ex = e;
         }
@@ -85,18 +88,24 @@ public class MessageTest extends TestCase {
 
     /**
      * Calling encode shall not mutate the inner fields of message
+     *
+     * Decoding after encoding shall not change the message content
      */
     @Test
     public void testSimpleKVImmutable() {
-        String key = "test_key";
-        String val = "test_value";
+        String key = "test_key--" + simpleDelim;
+        String val = "test_value--" + simpleDelim;
         KVMessage.StatusType status = KVMessage.StatusType.DELETE_ERROR;
-        SimpleKVMessage m = new SimpleKVMessage(key, val, status);
+        SimpleKVMessage m1 = new SimpleKVMessage(key, val, status);
 
-        m.encode();
+        SimpleKVMessage m2 = new SimpleKVMessage(m1.encode());
 
-        assertEquals(key, m.getKey());
-        assertEquals(val, m.getValue());
-        assertEquals(status, m.getStatus());
+        assertEquals(key, m1.getKey());
+        assertEquals(val, m1.getValue());
+        assertEquals(status, m1.getStatus());
+
+        assertEquals(key, m2.getKey());
+        assertEquals(val, m2.getValue());
+        assertEquals(status, m2.getStatus());
     }
 }
