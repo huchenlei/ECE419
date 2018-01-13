@@ -7,7 +7,7 @@
     <property name="source" value="1.7"/>
 
     <property name="build.dir" value="bin"/>
-    <property name="src.dir" value="./"/>
+    <property name="src.dir" value="src"/>
     <property name="lib.dir" value="libs"/>
     <property name="log.dir" value="logs"/>
 
@@ -48,7 +48,7 @@
         <delete file="${client.manifest.file}"/>
     </target>
 
-    <target name="cleanall" depends="clean-server, clean-client">
+    <target name="clean-all" depends="clean-server, clean-client">
         <delete dir="${build.dir}"/>
         <delete dir="${log.dir}"/>
     </target>
