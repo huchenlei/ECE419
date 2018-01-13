@@ -11,7 +11,9 @@ public interface KVMessage {
 		PUT_UPDATE, 	/* Put - request successful, i.e. value updated */
 		PUT_ERROR, 		/* Put - request not successful */
 		DELETE_SUCCESS, /* Delete - request successful */
-		DELETE_ERROR 	/* Delete - request successful */
+		DELETE_ERROR, 	/* Delete - request successful */
+		UNKNOWN_ERROR,  // Unknown error when something unknown happened
+		BAD_STATUS_ERROR, // Unknown status code - when server received an unknown status
 	}
 
 	/**
@@ -31,7 +33,20 @@ public interface KVMessage {
 	 * response types and error types associated to the message.
 	 */
 	public StatusType getStatus();
-	
+
+	/**
+	 * Encode the message object as a single string
+	 * @return encoded string
+	 */
+	public String encode();
+
+	/**
+	 * Decode the input string as message object and save information
+	 * in the message object calling decode method
+	 * @param data input string to decode
+	 */
+	public void decode(String data);
+
 }
 
 

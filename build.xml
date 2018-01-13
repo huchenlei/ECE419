@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project basedir="." default="build-jar" name="KVService">
+
+    <property environment="env"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.7"/>
+    <property name="source" value="1.7"/>
+
+    <property name="build.dir" value="bin"/>
+    <property name="src.dir" value="./"/>
+    <property name="lib.dir" value="libs"/>
+    <property name="log.dir" value="logs"/>
+
+    <property name="server.jar.file" value="KVServer.jar"/>
+    <property name="server.manifest.file" value="MANIFEST_SERVER.MF"/>
+    <property name="client.jar.file" value="KVClient.jar"/>
+    <property name="client.manifest.file" value="MANIFEST_CLIENT.MF"/>
+
+    <property name="server.main.class" value="app_kvServer.KVServer"/>
+    <property name="client.main.class" value="app_kvClient.KVClient"/>
+
+    <path id="external.jars">
+        <fileset dir="${lib.dir}" includes="**/*.jar"/>
+    </path>
+
+    <path id="project.classpath">
+        <pathelement location="${src.dir}"/>
+        <path refid="external.jars"/>
+    </path>
+
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <copy includeemptydirs="false" todir="${build.dir}">
+            <fileset dir="${src.dir}">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="clean-server">
+        <delete file="${server.jar.file}"/>
+        <delete file="${server.manifest.file}"/>
+    </target>
+
+    <target name="clean-client">
+        <delete file="${client.jar.file}"/>
+        <delete file="${client.manifest.file}"/>
+    </target>
+
+    <target name="cleanall" depends="clean-server, clean-client">
+        <delete dir="${build.dir}"/>
+        <delete dir="${log.dir}"/>
+    </target>
+
+    <target name="build" depends="init">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="bin"
+               source="${source}" target="${target}"
+               classpathref="project.classpath" includeantruntime="false">
+            <src path="${src.dir}"/>
+        </javac>
+    </target>
+
+    <target name="build-jar" depends="build-jar-server, build-jar-client"/>
+
+    <!--TODO can be written as macro-->
+    <target name="build-jar-server" depends="build">
+        <delete file="${server.jar.file}"/>
+        <delete file="${server.manifest.file}"/>
+
+        <manifest file="${server.manifest.file}">
+            <attribute name="built-by" value="${user.name}"/>
+            <attribute name="Main-Class" value="${server.main.class}"/>
+            <attribute name="Class-Path" value="libs/log4j-1.2.17.jar"/>
+        </manifest>
+
+        <jar destfile="${server.jar.file}" basedir="${build.dir}" manifest="${server.manifest.file}">
+            <fileset dir="${build.dir}" includes="**/*.class"/>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar"/>
+        </jar>
+    </target>
+
+    <target name="build-jar-client" depends="build">
+        <delete file="${client.jar.file}"/>
+        <delete file="${client.manifest.file}"/>
+
+        <manifest file="${client.manifest.file}">
+            <attribute name="built-by" value="${user.name}"/>
+            <attribute name="Main-Class" value="${client.main.class}"/>
+            <attribute name="Class-Path" value="libs/log4j-1.2.17.jar"/>
+        </manifest>
+
+        <jar destfile="${client.jar.file}" basedir="${build.dir}" manifest="${client.manifest.file}">
+            <fileset dir="${build.dir}" includes="**/*.class"/>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar"/>
+        </jar>
+    </target>
+
+
+    <path id="class.path">
+        <pathelement location="${build.dir}"/>
+        <path refid="external.jars"/>
+    </path>
+
+    <target name="run-server">
+        <java classname="${server.main.class}" classpathref="class.path">
+            <!--Port-->
+            <arg value="5000"/>
+            <!--Cache size-->
+            <arg value="1024"/>
+            <!--Cache strategy-->
+            <arg value="None"/>
+        </java>
+    </target>
+
+    <target name="run-client">
+        <java classname="${client.main.class}" classpathref="class.path"/>
+    </target>
+
+</project>

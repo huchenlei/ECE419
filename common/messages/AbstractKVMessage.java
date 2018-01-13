@@ -44,17 +44,4 @@ public abstract class AbstractKVMessage implements KVMessage {
         this();
         decode(data);
     }
-
-    /**
-     * Encode the message object as a single string
-     * @return encoded string
-     */
-    public abstract String encode();
-
-    /**
-     * Decode the input string as message object and save information
-     * in the message object calling decode method
-     * @param data input string to decode
-     */
-    public abstract void decode(String data);
 }

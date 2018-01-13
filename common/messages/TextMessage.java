@@ -1,4 +1,4 @@
-package client;
+package common.messages;
 
 import java.io.Serializable;
 
@@ -22,7 +22,7 @@ public class TextMessage implements Serializable {
      */
 	public TextMessage(byte[] bytes) {
 		this.msgBytes = addCtrChars(bytes);
-		this.msg = new String(msgBytes).trim();
+		this.msg = new String(msgBytes);
 	}
 	
 	/**
@@ -43,7 +43,7 @@ public class TextMessage implements Serializable {
 	 * @return the content of this message in String format.
 	 */
 	public String getMsg() {
-		return msg.trim();
+		return msg;
 	}
 
 	/**

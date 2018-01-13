@@ -4,7 +4,10 @@
 
 # output files
 /out
+KVClient.jar
+KVServer.jar
+MANIFEST*.MF
+/bin
 
 # ignore log files
 /logs
-
