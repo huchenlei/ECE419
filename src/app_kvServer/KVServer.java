@@ -86,7 +86,11 @@ public class KVServer implements IKVServer, Runnable {
 
     @Override
     public void putKV(String key, String value) throws Exception {
-        dumbCache.put(key, value);
+        if ("null".equals(value)) {
+            dumbCache.remove(key);
+        } else {
+            dumbCache.put(key, value);
+        }
     }
 
     @Override

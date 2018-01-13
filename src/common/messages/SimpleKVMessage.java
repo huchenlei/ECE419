@@ -63,7 +63,15 @@ public class SimpleKVMessage extends AbstractKVMessage {
 
         key = strs[0].replaceAll(ESCAPED_DELIM, DELIM);
         value = strs[1].replaceAll(ESCAPED_DELIM, DELIM);
-        System.out.println("status is " + strs[2]);
         status = StatusType.valueOf(StatusType.class, strs[2]);
+    }
+
+    public static void main(String[] args) {
+        String[] strs = "a simple,,Something".split(",");
+        System.out.println(strs.length);
+        for (String str: strs) {
+            if (str != null)
+                System.out.println(str);
+        }
     }
 }

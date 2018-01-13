@@ -60,14 +60,18 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
     private KVMessage handleMsg(KVMessage m) {
         switch (m.getStatus()) {
             case GET: {
-                String value;
+                Exception ex = null;
+                String value = null;
                 try {
                     value = kvServer.getKV(m.getKey());
                 } catch (Exception e) {
-                    return new SimpleKVMessage(m.getKey(), "", KVMessage.StatusType.GET_ERROR);
+                    ex = e;
+
                 }
-                assert (value != null);
-                return new SimpleKVMessage(m.getKey(), value, KVMessage.StatusType.GET_SUCCESS);
+                if (ex != null || value == null)
+                    return new SimpleKVMessage(m.getKey(), "", KVMessage.StatusType.GET_ERROR);
+                else
+                    return new SimpleKVMessage(m.getKey(), value, KVMessage.StatusType.GET_SUCCESS);
             }
 
             case PUT: {
@@ -77,10 +81,15 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                 try {
                     kvServer.putKV(m.getKey(), m.getValue());
                 } catch (Exception e) {
-                    return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.PUT_ERROR);
+                    if ("null".equals(m.getValue()))
+                        return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.DELETE_ERROR);
+                    else
+                        return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.PUT_ERROR);
                 }
 
-                if (keyExist) {
+                if ("null".equals(m.getValue())) {
+                    return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.DELETE_SUCCESS);
+                } else if (keyExist) {
                     return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.PUT_UPDATE);
                 } else {
                     return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.PUT_SUCCESS);

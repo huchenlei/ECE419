@@ -24,7 +24,6 @@ public class InteractionTest extends TestCase {
 		kvClient.disconnect();
 	}
 	
-	
 	@Test
 	public void testPut() {
 		String key = "foo2";
