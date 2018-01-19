@@ -7,23 +7,25 @@ import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
+
 /**
  * This testcase tests basic features of Message sub-classes
  * Created by Charlie on 2018-01-12.
  */
 public class MessageTest extends TestCase {
     private Exception ex;
-    private static String simpleDelim = ",";
+    private static String simpleDelim = null;
 
-// TODO somehow the @BeforeClass annotation does not work
-// TODO Temporarily hardcode the delim to let other parts of test function
-//    @BeforeClass
-//    public static void init() throws Exception {
-//        Field delimField = SimpleKVMessage.class.getDeclaredField("DELIM");
-//        delimField.setAccessible(true);
-//        simpleDelim = (String) delimField.get(SimpleKVMessage.class); // Pass null here since DELIM is a static field
-//        assert(simpleDelim != null);
-//    }
+    // somehow the @BeforeClass annotation does not work
+    // In lower version of JUnit, @BeforeClass is not working, @Override setUp instead
+    @Override
+    public void setUp() throws Exception {
+        Field delimField = SimpleKVMessage.class.getDeclaredField("DELIM");
+        delimField.setAccessible(true);
+        simpleDelim = (String) delimField.get(SimpleKVMessage.class); // Pass null here since DELIM is a static field
+        assert (simpleDelim != null);
+    }
 
     @Before
     public void preTest() {
@@ -56,7 +58,7 @@ public class MessageTest extends TestCase {
     public void testSimpleKVDecodeSuccess() {
         SimpleKVMessage m = new SimpleKVMessage();
         try {
-            m.decode("test_--" + simpleDelim + "key,test_--" + simpleDelim + "value,GET");
+            m.decode("test-d,_key-,test-d,_value-,GET");
         } catch (KVMessageException e) {
             ex = e;
         }
@@ -85,7 +87,7 @@ public class MessageTest extends TestCase {
 
     /**
      * Calling encode shall not mutate the inner fields of message
-     *
+     * <p>
      * Decoding after encoding shall not change the message content
      */
     @Test

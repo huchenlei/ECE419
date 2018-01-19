@@ -80,7 +80,7 @@ public class KVClient implements IKVClient, Runnable {
             } else if (cmd.equals("logLevel")) {
                 checkArgumentNum(tokens, 2);
                 String level = setLevel(tokens[1]);
-                if(level.equals(LogSetup.UNKNOWN_LEVEL)) {
+                if (level.equals(LogSetup.UNKNOWN_LEVEL)) {
                     printError("No valid log level!");
                     printPossibleLogLevels();
                 } else {
@@ -112,25 +112,25 @@ public class KVClient implements IKVClient, Runnable {
     }
 
     private String setLevel(String levelString) {
-        if(levelString.equals(Level.ALL.toString())) {
+        if (levelString.equals(Level.ALL.toString())) {
             logger.setLevel(Level.ALL);
             return Level.ALL.toString();
-        } else if(levelString.equals(Level.DEBUG.toString())) {
+        } else if (levelString.equals(Level.DEBUG.toString())) {
             logger.setLevel(Level.DEBUG);
             return Level.DEBUG.toString();
-        } else if(levelString.equals(Level.INFO.toString())) {
+        } else if (levelString.equals(Level.INFO.toString())) {
             logger.setLevel(Level.INFO);
             return Level.INFO.toString();
-        } else if(levelString.equals(Level.WARN.toString())) {
+        } else if (levelString.equals(Level.WARN.toString())) {
             logger.setLevel(Level.WARN);
             return Level.WARN.toString();
-        } else if(levelString.equals(Level.ERROR.toString())) {
+        } else if (levelString.equals(Level.ERROR.toString())) {
             logger.setLevel(Level.ERROR);
             return Level.ERROR.toString();
-        } else if(levelString.equals(Level.FATAL.toString())) {
+        } else if (levelString.equals(Level.FATAL.toString())) {
             logger.setLevel(Level.FATAL);
             return Level.FATAL.toString();
-        } else if(levelString.equals(Level.OFF.toString())) {
+        } else if (levelString.equals(Level.OFF.toString())) {
             logger.setLevel(Level.OFF);
             return Level.OFF.toString();
         } else {

@@ -15,9 +15,13 @@ public class SimpleKVMessage extends AbstractKVMessage {
     /**
      * Since we use regex to match the delim in strings, delim itself can not have
      * specific meaning in regex (e.g. '|', '[', '(', etc can not be used as delim)
+     *
+     * String in the message string will be joined by "-," sequence, while the original
+     * "-" in message will be replaced by "-d" sequence
      */
-    private static final String DELIM = ",";
-    private static final String ESCAPED_DELIM = "--" + DELIM;
+    private static final String ESCAPER = "-";
+    private static final String DELIM = ESCAPER + ",";
+    private static final String ESCAPED_ESCAPER = ESCAPER + "d";
 
     public SimpleKVMessage() {
         super();
@@ -44,8 +48,8 @@ public class SimpleKVMessage extends AbstractKVMessage {
                     "Unable to encode message due to incomplete fields");
         }
         return String.join(DELIM,
-                key.replaceAll(DELIM, ESCAPED_DELIM),
-                value.replaceAll(DELIM, ESCAPED_DELIM),
+                key.replaceAll(ESCAPER, ESCAPED_ESCAPER),
+                value.replaceAll(ESCAPER, ESCAPED_ESCAPER),
                 status.toString());
     }
 
@@ -53,7 +57,7 @@ public class SimpleKVMessage extends AbstractKVMessage {
     public void decode(String data) throws KVMessageException {
         // Use look behind regex to split string
         // matches all DELIM that is not preceded with "--"
-        String[] strs = data.trim().split("(?<!--)" + DELIM);
+        String[] strs = data.trim().split(DELIM);
 
         if (strs.length != 3) {
             throw new KVMessageException(
@@ -61,8 +65,8 @@ public class SimpleKVMessage extends AbstractKVMessage {
                             + data);
         }
 
-        key = strs[0].replaceAll(ESCAPED_DELIM, DELIM);
-        value = strs[1].replaceAll(ESCAPED_DELIM, DELIM);
+        key = strs[0].replaceAll(ESCAPED_ESCAPER, ESCAPER);
+        value = strs[1].replaceAll(ESCAPED_ESCAPER, ESCAPER);
         status = StatusType.valueOf(StatusType.class, strs[2]);
     }
 }
