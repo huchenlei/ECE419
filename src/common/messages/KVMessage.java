@@ -35,6 +35,21 @@ public interface KVMessage {
 	public StatusType getStatus();
 
 	/**
+	 * Setter of key
+	 */
+	public void setKey(String key);
+
+	/**
+	 * Setter of value
+	 */
+	public void setValue(String value);
+
+	/**
+	 * Setter of status
+	 */
+	public void setStatus(StatusType status);
+
+	/**
 	 * Encode the message object as a single string
 	 * @return encoded string
 	 */

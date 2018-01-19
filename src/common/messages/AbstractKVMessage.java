@@ -27,7 +27,23 @@ public abstract class AbstractKVMessage implements KVMessage {
         return status;
     }
 
-    public AbstractKVMessage() {}
+    @Override
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    @Override
+    public void setValue(String value) {
+        this.value = value;
+    }
+
+    @Override
+    public void setStatus(StatusType status) {
+        this.status = status;
+    }
+
+    public AbstractKVMessage() {
+    }
 
     public AbstractKVMessage(String key, String value, StatusType status) {
         this();

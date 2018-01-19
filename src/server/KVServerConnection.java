@@ -58,6 +58,8 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
      * @return response string to client
      */
     private KVMessage handleMsg(KVMessage m) {
+        KVMessage res = new SimpleKVMessage();
+        res.setKey(m.getKey());
         switch (m.getStatus()) {
             case GET: {
                 Exception ex = null;
@@ -68,13 +70,20 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     ex = e;
 
                 }
-                if (ex != null || value == null)
-                    return new SimpleKVMessage(m.getKey(), "", KVMessage.StatusType.GET_ERROR);
-                else
-                    return new SimpleKVMessage(m.getKey(), value, KVMessage.StatusType.GET_SUCCESS);
+                if (ex != null || value == null) {
+                    res.setValue("");
+                    res.setStatus(KVMessage.StatusType.GET_ERROR);
+                } else {
+                    res.setValue(value);
+                    res.setStatus(KVMessage.StatusType.GET_SUCCESS);
+                }
+                break;
             }
 
             case PUT: {
+                res.setKey(m.getKey());
+                res.setValue(m.getValue());
+
                 boolean keyExist =
                         kvServer.inCache(m.getKey()) || kvServer.inStorage(m.getKey());
 
@@ -82,24 +91,29 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     kvServer.putKV(m.getKey(), m.getValue());
                 } catch (Exception e) {
                     if ("null".equals(m.getValue()))
-                        return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.DELETE_ERROR);
+                        res.setStatus(KVMessage.StatusType.DELETE_ERROR);
                     else
-                        return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.PUT_ERROR);
+                        res.setStatus(KVMessage.StatusType.PUT_ERROR);
+                    break;
                 }
 
                 if ("null".equals(m.getValue())) {
-                    return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.DELETE_SUCCESS);
+                    res.setStatus(KVMessage.StatusType.DELETE_SUCCESS);
                 } else if (keyExist) {
-                    return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.PUT_UPDATE);
+                    res.setStatus(KVMessage.StatusType.PUT_UPDATE);
                 } else {
-                    return new SimpleKVMessage(m.getKey(), m.getValue(), KVMessage.StatusType.PUT_SUCCESS);
+                    res.setStatus(KVMessage.StatusType.PUT_SUCCESS);
                 }
+                break;
             }
 
             default: {
                 // Status code un-recognized
-                return new SimpleKVMessage("", "", KVMessage.StatusType.BAD_STATUS_ERROR);
+                res.setKey("");
+                res.setValue("");
+                res.setStatus(KVMessage.StatusType.BAD_STATUS_ERROR);
             }
         }
+        return res;
     }
 }
