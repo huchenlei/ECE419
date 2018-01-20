@@ -53,29 +53,37 @@ public class PersistentStoreTest extends TestCase {
             storeFile.put("wocao","null");
             value = storeFile.get("wocao");
             assert(value == null);
+            assert !storeFile.inStorage("wocao");
 
             storeFile.put("shei","bushiwo");
             value = storeFile.get("shei");
             assert(value.equals("bushiwo"));
+            assert(storeFile.inStorage("shei"));
 
             storeFile.put("wokeshuaile","null");
             value = storeFile.get("wokeshuaile");
             assert(value == null);
+            assert(!storeFile.inStorage("wokeshuaile"));
 
             value = storeFile.get("hello");
             assert(value == null);
+            assert(!storeFile.inStorage("hello"));
 
             value = storeFile.get("what");
             assert(value.equals("youhuo"));
+            assert(storeFile.inStorage("what"));
 
             value = storeFile.get("你好");
             assert(value.equals("shijie"));
+            assert(storeFile.inStorage("你好"));
 
             value = storeFile.get("wocao");
             assert(value == null);
+            assert(!storeFile.inStorage("wocao"));
 
             value = storeFile.get("shei");
             assert(value.equals("bushiwo"));
+            assert(storeFile.inStorage("shei"));
 
 
         } catch (Exception e) {

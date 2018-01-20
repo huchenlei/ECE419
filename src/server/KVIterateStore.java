@@ -21,8 +21,10 @@ public class KVIterateStore implements KVPersistentStore{
     @Override
     public void put(String key, String value) throws Exception {
         assert(this.storageFile != null);
+
         // search if key already exist;
         String getValue = this.get(key);
+
         // construct an entry string with fixed length
         byte[] stringBytes = new String(key+"="+value+"\n").getBytes("UTF-8");
         byte[] entryBytes = new byte[entrySize];
@@ -36,13 +38,15 @@ public class KVIterateStore implements KVPersistentStore{
                     logger.error(prompt + "Try to delete an entry with non-exist key: " + key);
                 }
                 else {
+                    // empty line can not be recognized by getter, so change value to null instead.
                     raf.seek((this.lineNum-1) * entrySize);
                     raf.write(entryBytes);
                     logger.info(prompt + "Delete entry (" + key + "=" + getValue + ") successfully");
                 }
             }
             else if (getValue == null){
-                // append the entry to the end of file
+
+                // append the entry to the first empty space;
                 long offset = 0;
                 if (this.firstEmptyLine == -1) {
                     offset = this.storageFile.length();
@@ -92,6 +96,8 @@ public class KVIterateStore implements KVPersistentStore{
                 }
                 curKey = strs[0];
                 curValue = strs[1];
+
+                // if value = null, treat it as empty line
                 if (curValue.equals("null")){
                     if (this.firstEmptyLine == -1){
                         this.firstEmptyLine = linecount;
@@ -116,6 +122,7 @@ public class KVIterateStore implements KVPersistentStore{
         return value;
     }
 
+    @Override
     public void clearStorage() {
         if (this.storageFile.delete()){
             logger.info(prompt + "Storage file deleted successfully.");
@@ -125,6 +132,13 @@ public class KVIterateStore implements KVPersistentStore{
         }
         this.storageFile = null;
         openFile();
+    }
+
+    @Override
+    public boolean inStorage(String key) throws Exception{
+        String value = get(key);
+
+        return (value != null);
     }
 
     private void openFile() {
