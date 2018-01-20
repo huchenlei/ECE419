@@ -103,6 +103,10 @@ public abstract class AbstractKVConnection implements KVConnection {
 
 		/* build final String */
         TextMessage msg = new TextMessage(msgBytes);
+        //handle the empty input issue, happened when disconnect without sending KVMessage
+        if (msg.getMsg().matches("[\\n\\r]+")){
+            throw new IOException("Received an empty message");
+        }
         logger.info("RECEIVE \t<"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
                 + clientSocket.getPort() + ">: '"

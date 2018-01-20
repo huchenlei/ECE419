@@ -24,7 +24,9 @@ public class KVClient implements IKVClient, Runnable {
 
     @Override
     public void newConnection(String hostname, int port) throws Exception {
-        assert (this.client == null);
+        if (this.client != null){
+            throw new IOException("Connection is already established");
+        }
         this.client = new KVStore(hostname, port);
         this.client.connect();
     }
