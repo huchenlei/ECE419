@@ -37,6 +37,10 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
             while (isOpen()) {
                 try {
                     TextMessage latestMsg = receiveMessage();
+                    //handle the empty input issue, happened when disconnect without sending KVMessage
+                    if (latestMsg.getMsg().matches("[\\n\\r]+")){
+                        throw new IOException("Received an empty message");
+                    }
                     KVMessage kvMessage = handleMsg(new SimpleKVMessage(latestMsg.getMsg()));
                     sendMessage(new TextMessage(kvMessage.encode()));
                 } catch (IOException ioe) {

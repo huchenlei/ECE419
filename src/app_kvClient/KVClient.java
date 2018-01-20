@@ -56,6 +56,7 @@ public class KVClient implements IKVClient, Runnable {
                             tokens[1],
                             Integer.parseInt(tokens[2])
                     );
+                    System.out.println(PROMPT + "Connected to server " + tokens[1] + ":" + tokens[2]);
                 } catch (NumberFormatException nfe) {
                     printError("No valid address. Port must be a number!");
                     logger.info("Unable to parse argument <port>", nfe);
@@ -69,6 +70,8 @@ public class KVClient implements IKVClient, Runnable {
             } else if (cmd.equals("disconnect") || cmd.equals("d")) {
                 checkArgumentNum(tokens, 1);
                 disconnect();
+                System.out.println(PROMPT + "Connection terminated.");
+
             } else if (cmd.equals("get")) {
                 checkArgumentNum(tokens, 2);
                 KVMessage res = client.get(tokens[1]);
@@ -154,6 +157,32 @@ public class KVClient implements IKVClient, Runnable {
 
     private void printHelp() {
         // TODO help message
+        StringBuilder sb = new StringBuilder();
+        sb.append(PROMPT).append("\n");
+        sb.append(PROMPT).append("KVClient Help (Usage):\n");
+        sb.append(PROMPT);
+        sb.append("::::::::::::::::::::::::::::::::");
+        sb.append("::::::::::::::::::::::::::::::::\n");
+        sb.append(PROMPT).append("connect <host> <port>");
+        sb.append("\t\t establishes a connection to a server\n");
+        sb.append(PROMPT).append("disconnect");
+        sb.append("\t\t\t disconnects from the server \n");
+        sb.append(PROMPT).append("put <key> <value>");
+        sb.append("\t\t inserts/updates a key-value pair into the storage \n");
+        sb.append(PROMPT).append("put <key> null");
+        sb.append("\t\t deletes the entry for the given key  \n");
+        sb.append(PROMPT).append("get <key>");
+        sb.append("\t\t\t retrieves the value for the given key \n");
+        sb.append(PROMPT).append("logLevel <level>");
+        sb.append("\t\t changes the logLevel \n");
+        sb.append(PROMPT).append("\t\t\t\t ");
+        sb.append("ALL | DEBUG | INFO | WARN | ERROR | FATAL | OFF \n");
+        sb.append(PROMPT).append("quit ");
+        sb.append("\t\t\t\t exits the program \n");
+        sb.append(PROMPT);
+        sb.append("::::::::::::::::::::::::::::::::");
+        sb.append("::::::::::::::::::::::::::::::::");
+        System.out.println(sb.toString());
     }
 
     private void printMessage(KVMessage m) {
