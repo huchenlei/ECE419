@@ -19,6 +19,17 @@ public class KVIterateStore implements KVPersistentStore {
         openFile();
     }
 
+    public KVIterateStore(String fileName) {
+        this.fileName = fileName;
+        openFile();
+    }
+
+    public KVIterateStore(String fileName, String dir) {
+        this.fileName = fileName;
+        this.dir = dir;
+        openFile();
+    }
+
     @Override
     public void put(String key, String value) throws Exception {
         assert (this.storageFile != null);

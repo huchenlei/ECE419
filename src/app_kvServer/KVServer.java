@@ -47,6 +47,10 @@ public class KVServer implements IKVServer, Runnable {
      *                  and "LFU".
      */
     public KVServer(int port, int cacheSize, String strategy) {
+        this(port, cacheSize, strategy, "iterateDataBase"); // Default db name
+    }
+
+    public KVServer(int port, int cacheSize, String strategy, String fileName) {
         this.port = port;
         this.cacheSize = cacheSize;
         this.strategy = CacheStrategy.valueOf(strategy);
@@ -66,8 +70,9 @@ public class KVServer implements IKVServer, Runnable {
                 e.printStackTrace();
             }
         }
-        this.store = new KVIterateStore();
+        this.store = new KVIterateStore(fileName);
     }
+
 
     @Override
     public int getPort() {
@@ -108,7 +113,7 @@ public class KVServer implements IKVServer, Runnable {
 
     @Override
     public boolean inCache(String key) {
-        if (cache != null){
+        if (cache != null) {
             return cache.containsKey(key);
         } else {
             return false;
