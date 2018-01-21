@@ -108,7 +108,11 @@ public class KVServer implements IKVServer, Runnable {
 
     @Override
     public boolean inCache(String key) {
-        return cache.containsKey(key);
+        if (cache != null){
+            return cache.containsKey(key);
+        } else {
+            return false;
+        }
     }
 
     @Override
@@ -132,9 +136,9 @@ public class KVServer implements IKVServer, Runnable {
     @Override
     public void putKV(String key, String value) throws Exception {
         // Update both cache and storage
+        store.put(key, value);
         if (cache != null)
             cache.put(key, value);
-        store.put(key, value);
     }
 
     @Override
@@ -158,12 +162,15 @@ public class KVServer implements IKVServer, Runnable {
         } catch (IOException e) {
             logger.error("Unable to close socket on port: " + port, e);
         }
+        // TODO Store everything in cache but not in storage
+        // TODO Currently there shall not be any concern on this issue
+        // TODO since we do store to disk prior to store to cache
     }
 
     @Override
     public void close() {
-        // TODO Other additional actions
         kill();
+        clearCache();
     }
 
     @Override

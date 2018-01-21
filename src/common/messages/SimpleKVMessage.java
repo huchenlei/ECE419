@@ -4,10 +4,10 @@ package common.messages;
  * A simple implementation of KVMessage.
  * Message is encoded in the format of
  * <p>
- * key,value,status
+ * key-,value-,status
  * <p>
- * All ',' character in original data, i.e. key and value,
- * will be escaped by --," sequence
+ * All '-' character in original data, i.e. key and value,
+ * will be replaced by "-d" sequence
  * <p>
  * Created by Charlie on 2018-01-12.
  */
