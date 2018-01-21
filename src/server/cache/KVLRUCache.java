@@ -7,7 +7,7 @@ import java.util.Map;
  * KVCache that use the LRU(Least Recent Use) logic to remove keys when cache is full
  */
 public class KVLRUCache extends AbstractKVCache{
-    public KVLRUCache(int cacheSize) {
+    public KVLRUCache(Integer cacheSize) {
         super(cacheSize);
         this.cacheMap = new LinkedHashMap<String, String>(
                 this.getCacheSize(),

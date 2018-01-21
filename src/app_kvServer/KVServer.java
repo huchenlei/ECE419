@@ -3,9 +3,15 @@ package app_kvServer;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import server.KVIterateStore;
+import server.KVPersistentStore;
 import server.KVServerConnection;
+import server.cache.KVCache;
+import server.cache.KVFIFOCache;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -23,9 +29,11 @@ public class KVServer implements IKVServer, Runnable {
     private boolean running;
     private ServerSocket serverSocket;
 
-    // TODO this is a dumb implementation of server storage
-    // TODO might be used as an cache layer later
-    private Map<String, String> dumbCache = new HashMap<>();
+    /**
+     * cache would be null if strategy is set to None
+     */
+    private KVCache cache;
+    private KVPersistentStore store;
 
     /**
      * Start KV Server at given port
@@ -42,6 +50,23 @@ public class KVServer implements IKVServer, Runnable {
         this.port = port;
         this.cacheSize = cacheSize;
         this.strategy = CacheStrategy.valueOf(strategy);
+        if (this.strategy == CacheStrategy.None) {
+            this.cache = null;
+        } else {
+            // Use reflection to dynamically initialize the cache based on strategy name
+            try {
+                Constructor<?> cons = Class.forName("server.cache.KV" + strategy + "Cache").getConstructor(Integer.class);
+                this.cache = (KVCache) cons.newInstance(cacheSize);
+            } catch (ClassNotFoundException |
+                    NoSuchMethodException |
+                    IllegalAccessException |
+                    InstantiationException |
+                    InvocationTargetException e) {
+                logger.fatal("Component of KVServer is not found, please check the integrity of jar package");
+                e.printStackTrace();
+            }
+        }
+        this.store = new KVIterateStore();
     }
 
     @Override
@@ -70,37 +95,56 @@ public class KVServer implements IKVServer, Runnable {
 
     @Override
     public boolean inStorage(String key) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
-    public boolean inCache(String key) {
-        return dumbCache.containsKey(key);
-    }
-
-    @Override
-    public String getKV(String key) throws Exception {
-        return dumbCache.get(key);
-    }
-
-    @Override
-    public void putKV(String key, String value) throws Exception {
-        if ("null".equals(value)) {
-            dumbCache.remove(key);
-        } else {
-            dumbCache.put(key, value);
+        try {
+            return store.inStorage(key);
+        } catch (Exception e) {
+            // when there is problem reading the file from disk
+            // consider it as data not on disk
+            logger.error("Unable to access data file on disk!");
+            e.printStackTrace();
+            return false;
         }
     }
 
     @Override
+    public boolean inCache(String key) {
+        return cache.containsKey(key);
+    }
+
+    @Override
+    public String getKV(String key) throws Exception {
+        if (cache != null) {
+            if (this.inCache(key)) {
+                return cache.get(key);
+            } else {
+                // Not in cache, read from disk and update cache
+                String result = store.get(key);
+                if (result != null) {
+                    cache.put(key, result);
+                }
+                return result;
+            }
+        } else {
+            return store.get(key);
+        }
+    }
+
+    @Override
+    public void putKV(String key, String value) throws Exception {
+        // Update both cache and storage
+        if (cache != null)
+            cache.put(key, value);
+        store.put(key, value);
+    }
+
+    @Override
     public void clearCache() {
-        dumbCache.clear();
+        cache.clear();
     }
 
     @Override
     public void clearStorage() {
-        // TODO Auto-generated method stub
+        store.clearStorage();
     }
 
     /**
@@ -134,7 +178,7 @@ public class KVServer implements IKVServer, Runnable {
 
                     logger.info("Connected to "
                             + client.getInetAddress().getHostName()
-                            +  " on port " + client.getPort());
+                            + " on port " + client.getPort());
                 } catch (IOException e) {
                     logger.error("Unable to establish connection with client.\n", e);
                 }

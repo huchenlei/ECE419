@@ -19,7 +19,7 @@ public class AbstractKVCache implements KVCache {
      *
      * @param cacheSize cache size
      */
-    public AbstractKVCache(int cacheSize) {
+    public AbstractKVCache(Integer cacheSize) {
         this.cacheSize = cacheSize;
     }
 

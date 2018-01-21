@@ -4,7 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class KVFIFOCache extends AbstractKVCache {
-    public KVFIFOCache(int cacheSize) {
+    public KVFIFOCache(Integer cacheSize) {
         super(cacheSize);
         // overwrite the method to permit removeEldestEntry, the map will automatically remove eldest entry
         this.cacheMap = new LinkedHashMap<String, String>(
