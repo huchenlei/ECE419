@@ -11,3 +11,6 @@ MANIFEST*.MF
 
 # ignore log files
 /logs
+
+# ignore database data files
+/res
