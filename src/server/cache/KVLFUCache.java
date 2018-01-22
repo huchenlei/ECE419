@@ -52,4 +52,16 @@ public class KVLFUCache extends AbstractKVCache {
 		LFUMap.put(key, counter);
 		return;
 	}
+
+    @Override
+    public void put(String key, String value) {
+	    LFUReplace(key);
+        super.put(key, value);
+    }
+
+    @Override
+    public String get(String key) {
+        LFUReplace(key);
+        return super.get(key);
+    }
 }
