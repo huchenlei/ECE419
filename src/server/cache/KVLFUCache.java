@@ -9,7 +9,7 @@ public class KVLFUCache extends AbstractKVCache {
 	
 	private HashMap<String,Integer> LFUMap;
 	
-	public KVLFUCache(int cacheSize) {
+	public KVLFUCache(Integer cacheSize) {
 		super(cacheSize);
 		this.cacheMap = new HashMap<String, String>();
 		this.LFUMap = new HashMap<String,Integer>(); 
