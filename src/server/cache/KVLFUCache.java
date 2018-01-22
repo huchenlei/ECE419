@@ -11,8 +11,8 @@ public class KVLFUCache extends AbstractKVCache {
 	
 	public KVLFUCache(Integer cacheSize) {
 		super(cacheSize);
-		this.cacheMap = new HashMap<String, String>();
-		this.LFUMap = new HashMap<String,Integer>(); 
+		this.cacheMap = new HashMap<String, String>(this.getCacheSize());
+		this.LFUMap = new HashMap<String,Integer>(this.getCacheSize()); 
     }
 	
 	//apply this function before get and put for LFU strategy
