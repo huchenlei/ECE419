@@ -17,7 +17,7 @@ public class KVLRUCache extends AbstractKVCache{
         ) {
             @Override
             protected boolean removeEldestEntry(Map.Entry eldest) {
-                return size() > cacheSize;
+                return size() > getCacheSize();
             }
         };
     }

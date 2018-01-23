@@ -15,7 +15,7 @@ public class KVFIFOCache extends AbstractKVCache {
         ) {
             @Override
             protected boolean removeEldestEntry(Map.Entry eldest) {
-                return size() > cacheSize;
+                return size() > getCacheSize();
             }
         };
     }
