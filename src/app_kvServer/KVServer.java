@@ -208,6 +208,7 @@ public class KVServer implements IKVServer, Runnable {
             serverSocket = new ServerSocket(port);
             logger.info("Server listening on port: "
                     + serverSocket.getLocalPort());
+            this.port = serverSocket.getLocalPort();
             return true;
         } catch (IOException e) {
             logger.error("Error! Cannot open server socket:");
