@@ -1,7 +1,10 @@
 package testing;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
+import junit.framework.TestCase;
 import org.apache.log4j.Level;
 
 import app_kvServer.KVServer;
@@ -12,25 +15,33 @@ import logger.LogSetup;
 
 public class AllTests {
 
-	static {
-		try {
-			new LogSetup("logs/testing/test.log", Level.ERROR);
+    static {
+        try {
+            new LogSetup("logs/testing/test.log", Level.ERROR);
             KVServer server = new KVServer(50000, 10, "FIFO", "TestIterateDB");
             server.clearStorage();
             new Thread(server).start();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	
-	public static Test suite() {
-		TestSuite clientSuite = new TestSuite("Basic Storage ServerTest-Suite");
-		clientSuite.addTestSuite(ConnectionTest.class);
-		clientSuite.addTestSuite(InteractionTest.class); 
-		clientSuite.addTestSuite(AdditionalTest.class);
-		clientSuite.addTestSuite(MessageTest.class);
-		return clientSuite;
-	}
-	
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public static Test suite() {
+        TestSuite clientSuite = new TestSuite("Basic Storage ServerTest-Suite");
+        List<Class<? extends TestCase>> tests = Arrays.asList(
+                ConnectionTest.class,
+                InteractionTest.class,
+                MessageTest.class,
+                FIFOCacheTest.class,
+                LFUCacheTest.class,
+                PersistentStoreTest.class
+        );
+        for (Class<? extends TestCase> test :
+                tests) {
+            clientSuite.addTestSuite(test);
+        }
+        return clientSuite;
+    }
+
 }
