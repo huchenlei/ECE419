@@ -29,8 +29,10 @@ public abstract class AbstractKVConnection implements KVConnection {
     public void disconnect() {
         try {
             if (clientSocket != null) {
-                input.close();
-                output.close();
+                if (input != null)
+                    input.close();
+                if (output != null)
+                    output.close();
                 clientSocket.close();
             }
         } catch (IOException e) {

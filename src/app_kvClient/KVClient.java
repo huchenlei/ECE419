@@ -109,7 +109,7 @@ public class KVClient implements IKVClient, Runnable {
         }
     }
 
-    private void disconnect() {
+    public void disconnect() {
         if (client != null) {
             client.disconnect();
             client = null;

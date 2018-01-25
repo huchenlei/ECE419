@@ -154,6 +154,7 @@ public class KVServer implements IKVServer, Runnable {
     @Override
     public void clearStorage() {
         store.clearStorage();
+        cache.clear();
     }
 
     /**

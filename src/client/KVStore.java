@@ -27,6 +27,11 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
     }
 
     @Override
+    public void disconnect() {
+        super.disconnect();
+    }
+
+    @Override
     public void connect() throws Exception {
         this.clientSocket = new Socket(address, port);
         this.input = clientSocket.getInputStream();
@@ -35,6 +40,9 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
 
     @Override
     public KVMessage put(String key, String value) throws Exception {
+        if ("".equals(value)) {
+            value = "null";
+        }
         sendMessage(
                 new TextMessage(
                         new SimpleKVMessage(key, value, KVMessage.StatusType.PUT).encode()));

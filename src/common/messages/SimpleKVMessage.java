@@ -39,6 +39,22 @@ public class SimpleKVMessage extends AbstractKVMessage {
         super(data);
     }
 
+    // TODO to be removed after tester bug is fixed by TA
+    @Override
+    public String getKey() {
+        return key;
+    }
+
+    @Override
+    public String getValue() {
+        return value;
+    }
+
+    @Override
+    public StatusType getStatus() {
+        return status;
+    }
+
     @Override
     public String encode() {
         if (key == null
