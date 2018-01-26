@@ -30,9 +30,9 @@ public class PersistentStoreTest extends TestCase {
         value = storeFile.get("wokeshuaile");
         assertTrue(value.equals("noproblem"));
 
-        storeFile.put("what", "youhuo");
+        storeFile.put("what", "you\rhuo");
         value = storeFile.get("what");
-        assertTrue(value.equals("youhuo"));
+        assertTrue(value.equals("you\rhuo"));
 
         storeFile.put("你好", "世界");
         value = storeFile.get("你好");
@@ -66,7 +66,7 @@ public class PersistentStoreTest extends TestCase {
         assertTrue(!storeFile.inStorage("hello"));
 
         value = storeFile.get("what");
-        assertTrue(value.equals("youhuo"));
+        assertTrue(value.equals("you\rhuo"));
         assertTrue(storeFile.inStorage("what"));
 
         value = storeFile.get("你好");

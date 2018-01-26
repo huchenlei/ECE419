@@ -30,22 +30,30 @@ public class KVIterateStore implements KVPersistentStore {
         openFile();
     }
 
+    private String encode(String value) {
+        return value.replaceAll("\r", "\\\\r").replaceAll("\n", "\\\\n");
+    }
+    private String decode(String value) {
+        return value.replaceAll("\\\\r", "\r").replaceAll("\\\\n", "\n");
+    }
+
     @Override
     public void put(String key, String value) throws Exception {
-        assert (this.storageFile != null);
+        String value_store = encode(value);
 
+        assert (this.storageFile != null);
         // search if key already exist;
         String getValue = this.get(key);
 
         // construct an entry string with fixed length
-        byte[] stringBytes = new String(key + "=" + value + "\n").getBytes("UTF-8");
+        byte[] stringBytes = (key + "=" + value_store + "\n").getBytes("UTF-8");
         byte[] entryBytes = new byte[entrySize];
         System.arraycopy(stringBytes, 0, entryBytes, 0, stringBytes.length);
 
         //modify the storage file
         RandomAccessFile raf = new RandomAccessFile(this.storageFile, "rw");
         try {
-            if (value.equals("null")) {
+            if (value_store.equals("null")) {
                 if (getValue == null) {
                     logger.error(prompt + "Try to delete an entry with non-exist key: " + key);
                 } else {
@@ -65,11 +73,11 @@ public class KVIterateStore implements KVPersistentStore {
                 }
                 raf.seek(offset);
                 raf.write(entryBytes);
-                logger.info(prompt + "Insert new entry: (" + key + "=" + value + ") successfully");
+                logger.info(prompt + "Insert new entry: (" + key + "=" + value_store + ") successfully");
             } else {
                 raf.seek((this.lineNum - 1) * entrySize);
                 raf.write(entryBytes);
-                logger.info(prompt + "Modify entry with key: " + key + " (" + getValue + "->" + value + ")");
+                logger.info(prompt + "Modify entry with key: " + key + " (" + getValue + "->" + value_store + ")");
             }
 
         } finally {
@@ -122,7 +130,9 @@ public class KVIterateStore implements KVPersistentStore {
             throw fnf;
         }
 
-
+        if (value != null){
+            value = decode(value);
+        }
         return value;
     }
 

@@ -3,7 +3,7 @@ package common.connection;
 import common.messages.TextMessage;
 import org.apache.log4j.Logger;
 
-import javax.xml.soap.Text;
+//import javax.xml.soap.Text;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
