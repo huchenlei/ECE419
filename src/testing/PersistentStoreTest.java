@@ -1,12 +1,9 @@
 package testing;
 
 import junit.framework.TestCase;
-
 import org.apache.log4j.BasicConfigurator;
 import org.junit.Test;
 import server.KVIterateStore;
-
-
 
 public class PersistentStoreTest extends TestCase {
     private KVIterateStore storeFile;
@@ -21,74 +18,68 @@ public class PersistentStoreTest extends TestCase {
 
 
     @Test
-    public void testPutGet() {
+    public void testPutGet() throws Exception {
         storeFile.clearStorage();
         String value;
-        try {
-            storeFile.put("hello","world");
-            value = storeFile.get("hello");
-            assert(value.equals("world"));
 
-            storeFile.put("wokeshuaile","noproblem");
-            value = storeFile.get("wokeshuaile");
-            assert(value.equals("noproblem"));
+        storeFile.put("hello", "world");
+        value = storeFile.get("hello");
+        assertTrue(value.equals("world"));
 
-            storeFile.put("what","youhuo");
-            value = storeFile.get("what");
-            assert(value.equals("youhuo"));
+        storeFile.put("wokeshuaile", "noproblem");
+        value = storeFile.get("wokeshuaile");
+        assertTrue(value.equals("noproblem"));
 
-            storeFile.put("你好","世界");
-            value = storeFile.get("你好");
-            assert(value.equals("世界"));
+        storeFile.put("what", "youhuo");
+        value = storeFile.get("what");
+        assertTrue(value.equals("youhuo"));
 
-            storeFile.put("hello","null");
-            value = storeFile.get("hello");
-            assert(value == null);
+        storeFile.put("你好", "世界");
+        value = storeFile.get("你好");
+        assertTrue(value.equals("世界"));
 
-            storeFile.put("你好","shijie");
-            value = storeFile.get("你好");
-            assert(value.equals("shijie"));
+        storeFile.put("hello", "null");
+        value = storeFile.get("hello");
+        assertTrue(value == null);
 
-            storeFile.put("wocao","null");
-            value = storeFile.get("wocao");
-            assert(value == null);
-            assert !storeFile.inStorage("wocao");
+        storeFile.put("你好", "shijie");
+        value = storeFile.get("你好");
+        assertTrue(value.equals("shijie"));
 
-            storeFile.put("shei","bushiwo");
-            value = storeFile.get("shei");
-            assert(value.equals("bushiwo"));
-            assert(storeFile.inStorage("shei"));
+        storeFile.put("wocao", "null");
+        value = storeFile.get("wocao");
+        assertTrue(value == null);
+        assertFalse(storeFile.inStorage("wocao"));
 
-            storeFile.put("wokeshuaile","null");
-            value = storeFile.get("wokeshuaile");
-            assert(value == null);
-            assert(!storeFile.inStorage("wokeshuaile"));
+        storeFile.put("shei", "bushiwo");
+        value = storeFile.get("shei");
+        assertTrue(value.equals("bushiwo"));
+        assertTrue(storeFile.inStorage("shei"));
 
-            value = storeFile.get("hello");
-            assert(value == null);
-            assert(!storeFile.inStorage("hello"));
+        storeFile.put("wokeshuaile", "null");
+        value = storeFile.get("wokeshuaile");
+        assertTrue(value == null);
+        assertTrue(!storeFile.inStorage("wokeshuaile"));
 
-            value = storeFile.get("what");
-            assert(value.equals("youhuo"));
-            assert(storeFile.inStorage("what"));
+        value = storeFile.get("hello");
+        assertTrue(value == null);
+        assertTrue(!storeFile.inStorage("hello"));
 
-            value = storeFile.get("你好");
-            assert(value.equals("shijie"));
-            assert(storeFile.inStorage("你好"));
+        value = storeFile.get("what");
+        assertTrue(value.equals("youhuo"));
+        assertTrue(storeFile.inStorage("what"));
 
-            value = storeFile.get("wocao");
-            assert(value == null);
-            assert(!storeFile.inStorage("wocao"));
+        value = storeFile.get("你好");
+        assertTrue(value.equals("shijie"));
+        assertTrue(storeFile.inStorage("你好"));
 
-            value = storeFile.get("shei");
-            assert(value.equals("bushiwo"));
-            assert(storeFile.inStorage("shei"));
+        value = storeFile.get("wocao");
+        assertTrue(value == null);
+        assertTrue(!storeFile.inStorage("wocao"));
 
-
-        } catch (Exception e) {
-            ex = e;
-        }
-        assertNull(ex);
+        value = storeFile.get("shei");
+        assertTrue(value.equals("bushiwo"));
+        assertTrue(storeFile.inStorage("shei"));
 
     }
 
@@ -98,24 +89,24 @@ public class PersistentStoreTest extends TestCase {
         try {
 
             value = storeFile.get("hello");
-            assert(value == null);
-            assert(!storeFile.inStorage("hello"));
+            assertTrue(value == null);
+            assertTrue(!storeFile.inStorage("hello"));
 
             value = storeFile.get("what");
-            assert(value.equals("youhuo"));
-            assert(storeFile.inStorage("what"));
+            assertTrue(value.equals("youhuo"));
+            assertTrue(storeFile.inStorage("what"));
 
             value = storeFile.get("你好");
-            assert(value.equals("shijie"));
-            assert(storeFile.inStorage("你好"));
+            assertTrue(value.equals("shijie"));
+            assertTrue(storeFile.inStorage("你好"));
 
             value = storeFile.get("wocao");
-            assert(value == null);
-            assert(!storeFile.inStorage("wocao"));
+            assertTrue(value == null);
+            assertTrue(!storeFile.inStorage("wocao"));
 
             value = storeFile.get("shei");
-            assert(value.equals("bushiwo"));
-            assert(storeFile.inStorage("shei"));
+            assertTrue(value.equals("bushiwo"));
+            assertTrue(storeFile.inStorage("shei"));
 
 
         }
