@@ -88,6 +88,18 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                 boolean keyExist =
                         kvServer.inCache(m.getKey()) || kvServer.inStorage(m.getKey());
 
+                if ("".equals(m.getKey()) ||
+                        "".equals(m.getValue()) ||
+                    // Empty string is not allowed as key or value on server side
+                    // Value of empty string is supposed to be converted to "null" at the client side
+                        m.getKey().matches(".*\\s.*") ||
+                        m.getValue().matches(".*\\s.*")
+                    // The key or value can not contain any white space characters such as '\t', ' ' or '\n'
+                        ) {
+                    res.setStatus(KVMessage.StatusType.PUT_ERROR);
+                    break;
+                }
+
                 try {
                     kvServer.putKV(m.getKey(), m.getValue());
                 } catch (Exception e) {

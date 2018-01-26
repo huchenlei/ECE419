@@ -24,7 +24,7 @@ public class KVClient implements IKVClient, Runnable {
 
     @Override
     public void newConnection(String hostname, int port) throws Exception {
-        if (this.client != null){
+        if (this.client != null) {
             throw new IOException("Connection is already established");
         }
         this.client = new KVStore(hostname, port);
@@ -37,8 +37,7 @@ public class KVClient implements IKVClient, Runnable {
     }
 
     /**
-     * TODO currently key and value input can not contain space or other
-     * TODO enmpty characters(\s)
+     * The key and values are assumed to be not containing any empty spaces(\s)
      *
      * @param cmdLine command line input string from user
      */
@@ -158,7 +157,6 @@ public class KVClient implements IKVClient, Runnable {
     }
 
     private void printHelp() {
-        // TODO help message
         StringBuilder sb = new StringBuilder();
         sb.append(PROMPT).append("\n");
         sb.append(PROMPT).append("KVClient Help (Usage):\n");

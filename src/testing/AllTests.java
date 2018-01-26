@@ -17,7 +17,7 @@ public class AllTests {
 
     static {
         try {
-            new LogSetup("logs/testing/test.log", Level.ERROR);
+            new LogSetup("logs/testing/test.log", Level.INFO);
             KVServer server = new KVServer(50000, 10, "FIFO", "TestIterateDB");
             server.clearStorage();
             new Thread(server).start();
@@ -43,5 +43,4 @@ public class AllTests {
         }
         return clientSuite;
     }
-
 }
