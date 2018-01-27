@@ -66,6 +66,9 @@ public class TextMessage implements Serializable {
         byte[] lenBytes = String.format("%0" + LEN_DIGIT + "d", bytes.length).getBytes();
         byte[] tmp = new byte[bytes.length + ctrBytes.length + LEN_DIGIT];
 
+        // Avoid overflow
+        assert ctrBytes.length < Math.pow(10, LEN_DIGIT);
+
         System.arraycopy(lenBytes, 0, tmp, 0, LEN_DIGIT);
         System.arraycopy(bytes, 0, tmp, LEN_DIGIT, bytes.length);
         System.arraycopy(ctrBytes, 0, tmp, LEN_DIGIT + bytes.length, ctrBytes.length);

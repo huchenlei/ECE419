@@ -1,6 +1,7 @@
 package server;
 
 import app_kvServer.IKVServer;
+import app_kvServer.KVServer;
 import common.connection.AbstractKVConnection;
 import common.messages.KVMessage;
 import common.messages.SimpleKVMessage;
@@ -69,7 +70,6 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     value = kvServer.getKV(m.getKey());
                 } catch (Exception e) {
                     ex = e;
-
                 }
                 if (ex != null || value == null) {
                     res.setValue("");
@@ -93,8 +93,11 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     // Empty string is not allowed as key or value on server side
                     // Value of empty string is supposed to be converted to "null" at the client side
                         m.getKey().matches(".*\\s.*") ||
-                        m.getValue().matches(".*\\s.*")
+                        m.getValue().matches(".*\\s.*") ||
                     // The key or value can not contain any white space characters such as '\t', ' ' or '\n'
+                        m.getKey().length() > KVServer.MAX_KEY ||
+                        m.getValue().length() > KVServer.MAX_VAL
+                    // The key or value can not exceed designated length
                         ) {
                     res.setStatus(KVMessage.StatusType.PUT_ERROR);
                     break;

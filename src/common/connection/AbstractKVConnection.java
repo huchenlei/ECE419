@@ -71,7 +71,7 @@ public abstract class AbstractKVConnection implements KVConnection {
             throw new IOException("Expecting CR, LF sequence at the end of packet");
         }
 
-		/* build final String */
+        /* build final String */
         TextMessage msg = new TextMessage(msgBytes);
 
         //handle the empty input issue, happened when disconnect without sending KVMessage

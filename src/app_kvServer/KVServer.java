@@ -19,6 +19,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class KVServer implements IKVServer, Runnable {
+    public static final Integer MAX_KEY = 20;
+    public static final Integer MAX_VAL = 120 * 1024;
 
     private static Logger logger = Logger.getRootLogger();
 
