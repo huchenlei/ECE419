@@ -1,5 +1,10 @@
 package common.messages;
 
+import org.apache.log4j.Logger;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
 /**
  * Base class of KV Message.
  * <p>
@@ -8,6 +13,41 @@ package common.messages;
  * Created by Charlie on 2018-01-12.
  */
 public abstract class AbstractKVMessage implements KVMessage {
+    private static Logger logger = Logger.getRootLogger();
+
+    /**
+     * The default class of message to create
+     */
+    public static final Class<? extends KVMessage> defaultMessageClass = JsonKVMessage.class;
+
+    /**
+     * Current using class of message (used in both client and server side)
+     * Change this to use different message protocols
+     */
+    public static Class<? extends KVMessage> currentMessageClass = defaultMessageClass;
+    private static Constructor<?> currentConstructor;
+
+    static {
+        try {
+            currentConstructor = currentMessageClass.getConstructor();
+        } catch (NoSuchMethodException e) {
+            logger.fatal("Default constructor not found in KVMessage implementation");
+            e.printStackTrace();
+        }
+    }
+
+    public static KVMessage createMessage() {
+        try {
+            return (KVMessage) currentConstructor.newInstance();
+        } catch (InstantiationException |
+                IllegalAccessException |
+                InvocationTargetException e) {
+            logger.fatal("Unable to create message with default constructor!");
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     String key;
     String value;
     StatusType status;

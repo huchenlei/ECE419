@@ -123,7 +123,7 @@ public class KVServer implements IKVServer, Runnable {
     }
 
     @Override
-    public String getKV(String key) throws Exception {
+    public synchronized String getKV(String key) throws Exception {
         if (cache != null) {
             if (this.inCache(key)) {
                 return cache.get(key);
@@ -141,7 +141,7 @@ public class KVServer implements IKVServer, Runnable {
     }
 
     @Override
-    public void putKV(String key, String value) throws Exception {
+    public synchronized void putKV(String key, String value) throws Exception {
         // Update both cache and storage
         store.put(key, value);
         if (cache != null)

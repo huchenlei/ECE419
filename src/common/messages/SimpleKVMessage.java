@@ -15,7 +15,7 @@ public class SimpleKVMessage extends AbstractKVMessage {
     /**
      * Since we use regex to match the delim in strings, delim itself can not have
      * specific meaning in regex (e.g. '|', '[', '(', etc can not be used as delim)
-     *
+     * <p>
      * String in the message string will be joined by "-," sequence, while the original
      * "-" in message will be replaced by "-d" sequence
      */
@@ -70,7 +70,7 @@ public class SimpleKVMessage extends AbstractKVMessage {
     }
 
     @Override
-    public void decode(String data) throws KVMessageException {
+    public void decode(String data) {
         // Use look behind regex to split string
         // matches all DELIM that is not preceded with "--"
         String[] strs = data.trim().split(DELIM);

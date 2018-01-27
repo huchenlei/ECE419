@@ -1,8 +1,8 @@
 package client;
 
 import common.connection.AbstractKVConnection;
+import common.messages.AbstractKVMessage;
 import common.messages.KVMessage;
-import common.messages.SimpleKVMessage;
 import common.messages.TextMessage;
 
 import java.net.Socket;
@@ -43,17 +43,29 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         if ("".equals(value)) {
             value = "null";
         }
-        sendMessage(
-                new TextMessage(
-                        new SimpleKVMessage(key, value, KVMessage.StatusType.PUT).encode()));
-        return new SimpleKVMessage(receiveMessage().getMsg());
+        KVMessage req = AbstractKVMessage.createMessage();
+        KVMessage res = AbstractKVMessage.createMessage();
+        assert res != null;
+        assert req != null;
+        req.setKey(key);
+        req.setValue(value);
+        req.setStatus(KVMessage.StatusType.PUT);
+        sendMessage(new TextMessage(req.encode()));
+        res.decode(receiveMessage().getMsg());
+        return res;
     }
 
     @Override
     public KVMessage get(String key) throws Exception {
-        sendMessage(
-                new TextMessage(
-                        new SimpleKVMessage(key, "", KVMessage.StatusType.GET).encode()));
-        return new SimpleKVMessage(receiveMessage().getMsg());
+        KVMessage req = AbstractKVMessage.createMessage();
+        KVMessage res = AbstractKVMessage.createMessage();
+        assert res != null;
+        assert req != null;
+        req.setKey(key);
+        req.setValue("");
+        req.setStatus(KVMessage.StatusType.GET);
+        sendMessage(new TextMessage(req.encode()));
+        res.decode(receiveMessage().getMsg());
+        return res;
     }
 }

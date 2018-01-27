@@ -3,8 +3,8 @@ package server;
 import app_kvServer.IKVServer;
 import app_kvServer.KVServer;
 import common.connection.AbstractKVConnection;
+import common.messages.AbstractKVMessage;
 import common.messages.KVMessage;
-import common.messages.SimpleKVMessage;
 import common.messages.TextMessage;
 
 import java.io.IOException;
@@ -37,9 +37,11 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
             while (isOpen()) {
                 try {
-                    TextMessage latestMsg = receiveMessage();
-                    KVMessage kvMessage = handleMsg(new SimpleKVMessage(latestMsg.getMsg()));
-                    sendMessage(new TextMessage(kvMessage.encode()));
+                    KVMessage req = AbstractKVMessage.createMessage();
+                    assert req != null;
+                    req.decode(receiveMessage().getMsg());
+                    KVMessage res = handleMsg(req);
+                    sendMessage(new TextMessage(res.encode()));
                 } catch (IOException ioe) {
                     logger.error("Connection lost (" + this.clientSocket.getInetAddress().getHostName()
                             +  ": " + this.clientSocket.getPort() + ")!");
@@ -60,7 +62,8 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
      * @return response string to client
      */
     private KVMessage handleMsg(KVMessage m) {
-        KVMessage res = new SimpleKVMessage();
+        KVMessage res = AbstractKVMessage.createMessage();
+        assert res != null;
         res.setKey(m.getKey());
         switch (m.getStatus()) {
             case GET: {
