@@ -35,6 +35,7 @@ public class AllTests {
                 MessageTest.class,
                 FIFOCacheTest.class,
                 LFUCacheTest.class,
+                LRUCacheTest.class,
                 PersistentStoreTest.class
         );
         for (Class<? extends TestCase> test :

@@ -103,6 +103,16 @@
         <path refid="external.jars"/>
     </path>
 
+    <target name="test" depends="build">
+        <junit printsummary="yes" haltonfailure="no" fork="true">
+            <classpath refid="class.path"/>
+            <classpath location="./bin"/>
+            <test name="testing.AllTests">
+                <formatter type="plain"/>
+            </test>
+        </junit>
+    </target>
+
     <target name="run-server">
         <java classname="${server.main.class}" classpathref="class.path">
             <!--Port-->

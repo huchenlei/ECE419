@@ -14,3 +14,6 @@ MANIFEST*.MF
 
 # ignore database data files
 /res
+
+# ignore test generated file
+TEST*.txt
