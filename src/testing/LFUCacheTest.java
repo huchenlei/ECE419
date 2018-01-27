@@ -5,8 +5,6 @@ import junit.framework.TestCase;
 import server.cache.KVLFUCache;
 
 
-
-
 public class LFUCacheTest extends TestCase{
 
 	private KVLFUCache lfuCache;
