@@ -1,6 +1,7 @@
 package server;
 
 import java.io.*;
+import java.nio.channels.FileChannel;
 
 import org.apache.log4j.Logger;
 
@@ -9,11 +10,9 @@ public class KVIterateStore implements KVPersistentStore {
     private static Logger logger = Logger.getRootLogger();
     private String fileName = "iterateDatabase";
     private File storageFile;
-    private long lineNum;
-    private long firstEmptyLine;
-    private int entrySize = 200;
-    private String deleteSymbol = "Deleted";
     private String prompt = "KVIterateStore: ";
+    private long startOffset;
+    private long endOffset;
 
     public KVIterateStore() {
         openFile();
@@ -30,25 +29,68 @@ public class KVIterateStore implements KVPersistentStore {
         openFile();
     }
 
-    private String encode(String value) {
+    private String encodeValue(String value) {
         return value.replaceAll("\r", "\\\\r").replaceAll("\n", "\\\\n");
     }
-    private String decode(String value) {
+    private String decodeValue(String value) {
         return value.replaceAll("\\\\r", "\r").replaceAll("\\\\n", "\n");
     }
 
+    private void deleteEntry(RandomAccessFile raf, long offset1, long offset2) throws IOException {
+        RandomAccessFile rTemp = new RandomAccessFile(new File(this.dir + "/" + "." + this.fileName + "~"),
+                "rw");
+        long fileSize = raf.length();
+        FileChannel sourceChannel = raf.getChannel();
+        FileChannel targetChannel = rTemp.getChannel();
+        // move rest of the content (from end of the entry) to temp channel
+        sourceChannel.transferTo(offset2, fileSize - offset2, targetChannel);
+        // remove content from the start of the entry
+        sourceChannel.truncate(offset1);
+        // move content back
+        targetChannel.position(0L);
+        sourceChannel.transferFrom(targetChannel, offset1, (fileSize - offset2));
+        // clean the target_file
+        targetChannel.truncate(0);
+        sourceChannel.close();
+        targetChannel.close();
+        rTemp.close();
+    }
+
+    private void updateEntry(RandomAccessFile raf, long offset1, long offset2, byte[] stringBytes) throws IOException{
+        RandomAccessFile rTemp = new RandomAccessFile(new File(this.dir + "/" + "." + this.fileName + "~"),
+                "rw");
+        long fileSize = raf.length();
+        FileChannel sourceChannel = raf.getChannel();
+        FileChannel targetChannel = rTemp.getChannel();
+        // move rest of the content (from end of the entry) to temp channel
+        sourceChannel.transferTo(offset2, fileSize - offset2, targetChannel);
+        // remove content from the start of the entry
+        sourceChannel.truncate(offset1);
+        // insert the new entry
+        raf.seek(offset1);
+        raf.write(stringBytes);
+        long newOffset = raf.getFilePointer();
+        // move content back
+        targetChannel.position(0L);
+        sourceChannel.transferFrom(targetChannel, newOffset, (fileSize - offset2));
+        // clean target channel
+        targetChannel.truncate(0);
+        sourceChannel.close();
+        targetChannel.close();
+        rTemp.close();
+    }
+
+
     @Override
     public void put(String key, String value) throws Exception {
-        String value_store = encode(value);
+        String value_store = encodeValue(value);
 
         assert (this.storageFile != null);
         // search if key already exist;
         String getValue = this.get(key);
 
         // construct an entry string with fixed length
-        byte[] stringBytes = (key + "=" + value_store + "\n").getBytes("UTF-8");
-        byte[] entryBytes = new byte[entrySize];
-        System.arraycopy(stringBytes, 0, entryBytes, 0, stringBytes.length);
+        byte[] stringBytes = (key + "=" + value_store + "\r\n").getBytes("UTF-8");
 
         //modify the storage file
         RandomAccessFile raf = new RandomAccessFile(this.storageFile, "rw");
@@ -57,26 +99,18 @@ public class KVIterateStore implements KVPersistentStore {
                 if (getValue == null) {
                     logger.error(prompt + "Try to delete an entry with non-exist key: " + key);
                 } else {
-                    // empty line can not be recognized by getter, so change value to null instead.
-                    raf.seek((this.lineNum - 1) * entrySize);
-                    raf.write(entryBytes);
+                    // delete that entry
+                    this.deleteEntry(raf, this.startOffset, this.endOffset);
                     logger.info(prompt + "Delete entry (" + key + "=" + getValue + ") successfully");
                 }
             } else if (getValue == null) {
-
-                // append the entry to the first empty space;
-                long offset = 0;
-                if (this.firstEmptyLine == -1) {
-                    offset = this.storageFile.length();
-                } else {
-                    offset = (this.firstEmptyLine - 1) * entrySize;
-                }
+                // append the entry to the end
+                long offset = raf.length();
                 raf.seek(offset);
-                raf.write(entryBytes);
+                raf.write(stringBytes);
                 logger.info(prompt + "Insert new entry: (" + key + "=" + value_store + ") successfully");
             } else {
-                raf.seek((this.lineNum - 1) * entrySize);
-                raf.write(entryBytes);
+                this.updateEntry(raf, this.startOffset, this.endOffset, stringBytes);
                 logger.info(prompt + "Modify entry with key: " + key + " (" + getValue + "->" + value_store + ")");
             }
 
@@ -90,40 +124,35 @@ public class KVIterateStore implements KVPersistentStore {
     public String get(String key) throws Exception {
         assert (this.storageFile != null);
         String value = null;
-        long linecount = 0;
-        this.lineNum = 0;
-        this.firstEmptyLine = -1;
+        this.startOffset = 0;
+        this.endOffset = 0;
         try {
-            BufferedReader bufReader = new BufferedReader(new FileReader(this.storageFile));
+            RandomAccessFile raf = new RandomAccessFile(this.storageFile, "r");
             String line, curKey, curValue;
-            while ((line = bufReader.readLine()) != null) {
-                linecount++;
+            while ((line = raf.readLine()) != null) {
+                // convert line from ISO to UTF-8
+                line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
+                this.startOffset = this.endOffset;
+                this.endOffset = raf.getFilePointer();
                 line = line.trim();
                 if (line.isEmpty()) {
-                    if (this.firstEmptyLine == -1) {
-                        this.firstEmptyLine = linecount;
-                    }
+                    System.out.println("how could it be");
                     continue;
                 }
                 String[] strs = line.split("=");
                 if (strs.length != 2) {
+                    raf.close();
                     throw new IOException(prompt + "Invalid Entry found: " + line);
                 }
                 curKey = strs[0];
                 curValue = strs[1];
 
-                // if value = null, treat it as empty line
-                if (curValue.equals("null")) {
-                    if (this.firstEmptyLine == -1) {
-                        this.firstEmptyLine = linecount;
-                    }
-                } else if (curKey.equals(key)) {
+                if (curKey.equals(key)) {
                     value = curValue;
-                    this.lineNum = linecount;
                     break;
                 }
             }
-            bufReader.close();
+            raf.close();
 
         } catch (FileNotFoundException fnf) {
             logger.error(prompt + "Storage file not found", fnf);
@@ -131,7 +160,7 @@ public class KVIterateStore implements KVPersistentStore {
         }
 
         if (value != null){
-            value = decode(value);
+            value = decodeValue(value);
         }
         return value;
     }
