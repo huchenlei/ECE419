@@ -98,6 +98,7 @@ public class KVIterateStore implements KVPersistentStore {
             if (value_store.equals("null")) {
                 if (getValue == null) {
                     logger.error(prompt + "Try to delete an entry with non-exist key: " + key);
+                    throw new IOException("Try to delete an entry with non-exist key: " + key);
                 } else {
                     // delete that entry
                     this.deleteEntry(raf, this.startOffset, this.endOffset);

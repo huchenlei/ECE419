@@ -153,7 +153,12 @@ public class InteractionTest extends TestCase {
     }
 
     public void testBadKeys() throws Exception {
-        String[] badKeys = {" ", "\n", "\t", "123456789012345678901"};
+        String[] badKeys = {
+                // These keys are not allowed
+                " ", "\n", "\t",
+                // key with 21 byte length
+                "123456789012345678901",
+        };
         String val = "val";
         KVMessage res = null;
 
@@ -162,5 +167,12 @@ public class InteractionTest extends TestCase {
             res = kvClient.put(badKey, val);
             assertEquals(res.getStatus(), StatusType.PUT_ERROR);
         }
+
+        String nonExKey = "not_exist_key";
+        kvClient.put(nonExKey, "null"); // delete the key if already exist
+        // Delete a non existing key shall report DELETE ERROR
+        res = kvClient.put(nonExKey, "null");
+        assertEquals(res.getStatus(), StatusType.DELETE_ERROR);
+
     }
 }

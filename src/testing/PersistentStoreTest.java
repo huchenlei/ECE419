@@ -54,7 +54,15 @@ public class PersistentStoreTest extends TestCase {
         value = storeFile.get("你好");
         assertTrue(value.equals("shijie"));
 
-        storeFile.put("wocao", "null");
+        // delete an non existing key shall throw exception
+        Exception ex = null;
+        try {
+            storeFile.put("wocao", "null");
+        } catch (Exception e) {
+            ex = e;
+        }
+        assertNotNull(ex);
+
         value = storeFile.get("wocao");
         assertTrue(value == null);
         assertFalse(storeFile.inStorage("wocao"));
