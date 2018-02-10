@@ -15,9 +15,12 @@
     <property name="server.manifest.file" value="MANIFEST_SERVER.MF"/>
     <property name="client.jar.file" value="KVClient.jar"/>
     <property name="client.manifest.file" value="MANIFEST_CLIENT.MF"/>
+    <property name="ecs.jar.file"      value="ecs.jar"/>
+    <property name="ecs.manifest.file" value="MANIFEST_ECS.MF"/>
 
     <property name="server.main.class" value="app_kvServer.KVServer"/>
     <property name="client.main.class" value="app_kvClient.KVClient"/>
+    <property name="ecs.main.class" value="app_kvECS.ECSClient"/>
 
     <path id="external.jars">
         <fileset dir="${lib.dir}" includes="**/*.jar"/>
@@ -48,7 +51,12 @@
         <delete file="${client.manifest.file}"/>
     </target>
 
-    <target name="clean-all" depends="clean-server, clean-client">
+    <target name="clean-ecs">
+        <delete file="${ecs.jar.file}"/>
+        <delete file="${ecs.manifest.file}"/>
+    </target>
+
+    <target name="clean-all" depends="clean-server, clean-client, clean-ecs">
         <delete dir="${build.dir}"/>
         <delete dir="${log.dir}"/>
     </target>
@@ -62,7 +70,7 @@
         </javac>
     </target>
 
-    <target name="build-jar" depends="build-jar-server, build-jar-client"/>
+    <target name="build-jar" depends="build-jar-server, build-jar-client, build-jar-ecs"/>
 
     <!--TODO can be written as macro-->
     <target name="build-jar-server" depends="build">
@@ -97,6 +105,21 @@
         </jar>
     </target>
 
+    <target name="build-jar-ecs" depends="build">
+        <delete file="${ecs.jar.file}"/>
+        <delete file="${ecs.manifest.file}"/>
+
+        <manifest file="${ecs.manifest.file}">
+            <attribute name="built-by" value="${user.name}"/>
+            <attribute name="Main-Class" value="${ecs.main.class}"/>
+            <attribute name="Class-Path" value="libs/log4j-1.2.17.jar"/>
+        </manifest>
+
+        <jar destfile="${ecs.jar.file}" basedir="${build.dir}" manifest="${ecs.manifest.file}">
+            <fileset dir="${build.dir}" includes="**/*.class"/>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar"/>
+        </jar>
+    </target>
 
     <path id="class.path">
         <pathelement location="${build.dir}"/>

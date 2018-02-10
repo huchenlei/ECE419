@@ -6,6 +6,7 @@
 /out
 KVClient.jar
 KVServer.jar
+ecs.jar
 MANIFEST*.MF
 /bin
 

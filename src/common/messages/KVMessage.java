@@ -14,7 +14,11 @@ public interface KVMessage {
 		DELETE_ERROR, 	/* Delete - request successful */
 		UNKNOWN_ERROR,  // Unknown error when something unknown happened
 		BAD_STATUS_ERROR, // Unknown status code - when server received an unknown status
-	}
+
+        SERVER_STOPPED,         /* Server is stopped, no requests are processed */
+        SERVER_WRITE_LOCK,      /* Server locked for out, only get possible */
+        SERVER_NOT_RESPONSIBLE  /* Request not successful, server not responsible for key */
+    }
 
 	/**
 	 * @return the key that is associated with this message, 

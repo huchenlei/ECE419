@@ -12,7 +12,7 @@ public class LRUCacheTest extends TestCase{
     protected void setUp() throws Exception {
         super.setUp();
         cache = new KVLRUCache(CACHE_SIZE);
-    }
+}
 
     /**
      * This test test the cache's ability to remove least recently used item
