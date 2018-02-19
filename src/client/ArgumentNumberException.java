@@ -5,6 +5,6 @@ package client;
  */
 public class ArgumentNumberException extends Exception {
     public ArgumentNumberException(int expected, int got) {
-        super("Expecting " + expected + " arguments, but got " + got + ".");
+        super("Expecting at least " + expected + " arguments, but got " + got + ".");
     }
 }

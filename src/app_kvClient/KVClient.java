@@ -149,9 +149,9 @@ public class KVClient implements IKVClient, Runnable {
                 + "ALL | DEBUG | INFO | WARN | ERROR | FATAL | OFF");
     }
 
-    private void checkArgumentNum(String[] tokens, int expected)
+    public static void checkArgumentNum(String[] tokens, int expected)
             throws ArgumentNumberException {
-        if (tokens.length != expected) {
+        if (tokens.length < expected) {
             throw new ArgumentNumberException(expected, tokens.length);
         }
     }
