@@ -6,7 +6,7 @@ import com.google.gson.Gson;
  * This class is an Json implementation of message exchanging data between
  * server and client
  */
-public class JsonKVMessage extends AbstractKVMessage{
+public class JsonKVMessage extends AbstractKVMessage {
     // TODO to be removed after tester bug is fixed by TA
     @Override
     public String getKey() {
