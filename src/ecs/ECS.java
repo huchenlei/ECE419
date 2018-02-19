@@ -13,8 +13,6 @@ import java.util.Map;
  * This class handles core functionality of external configuration service
  */
 public class ECS implements IECSClient {
-
-
     public class ECSConfigFormatException extends RuntimeException {
         public ECSConfigFormatException(String msg) {
             super(msg);

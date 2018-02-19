@@ -5,6 +5,7 @@ import org.apache.log4j.Logger;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 
 /**
  * Pojo class representing node in ecs
@@ -42,6 +43,34 @@ public class ECSNode implements IECSNode {
 
     public void setPrev(ECSNode node) {
         this.prev = node;
+    }
+
+    public ECSNode getPrev() {
+        return this.prev;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ECSNode ecsNode = (ECSNode) o;
+        return Objects.equals(host, ecsNode.host) &&
+                Objects.equals(port, ecsNode.port);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(host, port);
+    }
+
+    @Override
+    public String toString() {
+        return "ECSNode{" +
+                "name='" + name + '\'' +
+                ", host='" + host + '\'' +
+                ", port=" + port +
+                ", hash='" + hash + '\'' +
+                '}';
     }
 
     @Override
