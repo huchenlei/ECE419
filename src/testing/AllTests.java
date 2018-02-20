@@ -37,7 +37,8 @@ public class AllTests {
                 LFUCacheTest.class,
                 LRUCacheTest.class,
                 PersistentStoreTest.class,
-                HashRingTest.class
+                HashRingTest.class,
+                ECSTest.class
         );
         for (Class<? extends TestCase> test :
                 tests) {

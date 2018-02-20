@@ -79,5 +79,5 @@ public interface IECSClient {
     /**
      * Get the specific node responsible for the given key
      */
-    public IECSNode getNodeByKey(String Key);
+    public IECSNode getNodeByKey(String key);
 }

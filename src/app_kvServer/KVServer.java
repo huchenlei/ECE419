@@ -182,6 +182,31 @@ public class KVServer implements IKVServer, Runnable {
     }
 
     @Override
+    public void start() {
+
+    }
+
+    @Override
+    public void stop() {
+
+    }
+
+    @Override
+    public void lockWrite() {
+
+    }
+
+    @Override
+    public void unlockWrite() {
+
+    }
+
+    @Override
+    public boolean moveData(String[] hashRange, String targetName) throws Exception {
+        return false;
+    }
+
+    @Override
     public void run() {
         running = initializeServer();
         if (serverSocket != null) {
