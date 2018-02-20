@@ -43,14 +43,14 @@ public interface IECSClient {
      * same directory as the ECS. All storage servers are initialized with the metadata and any persisted data, and remain in state stopped.
      * NOTE: Must call setupNodes before the SSH calls to start the servers and must call awaitNodes before returning
      *
-     * @return set of strings containing the names of the nodes
+     * @return set of strings containing the names of the nodes; null if no enough server available
      */
     public Collection<IECSNode> addNodes(int count, String cacheStrategy, int cacheSize);
 
     /**
      * Sets up `count` servers with the ECS (in this case Zookeeper)
      *
-     * @return array of strings, containing unique names of servers
+     * @return array of strings, containing unique names of servers; null if no enough server available
      */
     public Collection<IECSNode> setupNodes(int count, String cacheStrategy, int cacheSize);
 

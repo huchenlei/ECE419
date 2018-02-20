@@ -1,7 +1,16 @@
 package ecs;
 
 import app_kvECS.IECSClient;
+import com.google.gson.Gson;
+import logger.LogSetup;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+import server.ServerMetaData;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,6 +26,12 @@ public class ECS implements IECSClient {
     private static final String SERVER_JAR = "KVServer.jar";
     // Assumes that the jar file is located at the same dir on the remote server
     private static final String JAR_PATH = new File(System.getProperty("user.dir"), SERVER_JAR).toString();
+    // Assumes that ZooKeeper runs on localhost default port(2181)
+    private static final String ZK_CONN = "localhost:2181";
+    // ZooKeeper connection timeout in millisecond
+    private static final int ZK_TIMEOUT = 2000;
+
+    public static final String ZK_SERVER_ROOT = "/kv_servers";
 
     private static Logger logger = Logger.getRootLogger();
 
@@ -45,15 +60,24 @@ public class ECS implements IECSClient {
         BufferedReader configReader = new BufferedReader(new FileReader(new File(configFileName)));
 
         String currentLine;
+        Set<String> namePool = new HashSet<>();
         while ((currentLine = configReader.readLine()) != null) {
             String[] tokens = currentLine.split(" ");
             if (tokens.length != 3) {
                 throw new ECSConfigFormatException("invalid number of arguments! should be 3 but got " +
                         tokens.length + ".");
             }
-            ECSNode newNode = new ECSNode(tokens[0], tokens[1], Integer.parseInt(tokens[2]));
-            nodePool.add(newNode);
-            logger.info(newNode + " added to node pool");
+            String name = tokens[0];
+            String ip = tokens[1];
+            Integer port = Integer.parseInt(tokens[2]);
+            if (namePool.contains(name)) {
+                logger.warn(name + " already exists. Server name must be unique, please check for duplications");
+            } else {
+                ECSNode newNode = new ECSNode(name, ip, port);
+                nodePool.add(newNode);
+                namePool.add(name);
+                logger.info(newNode + " added to node pool");
+            }
         }
     }
 
@@ -73,55 +97,90 @@ public class ECS implements IECSClient {
         return false;
     }
 
-    public IECSNode setupNode(String cacheStrategy, int cacheSize) {
-        IECSNode n = nodePool.poll(); // node to activate
-        hashRing.addNode((ECSNode) n);
-        return n;
+    private static String getNodePath(IECSNode node) {
+        return ZK_SERVER_ROOT + "/" + node.getNodeName();
     }
 
     @Override
     public IECSNode addNode(String cacheStrategy, int cacheSize) {
-        IECSNode n = setupNode(cacheStrategy, cacheSize);
-        // Issue the ssh call to start the process remotely
-        String javaCmd = String.join(" ",
-                "java -jar",
-                JAR_PATH,
-                Integer.toString(n.getNodePort()),
-                Integer.toString(cacheSize),
-                cacheStrategy);
-        String sshCmd = "ssh -o StrictHostKeyChecking=no -n " + n.getNodeHost() + " nohup " + javaCmd +
-                " > ./logs/output.log 2> ./logs/err.log &";
-        // Redirect output to files so that ssh channel will not wait for further output
-        try {
-            logger.info("Executing command: " + sshCmd);
-            Process p = Runtime.getRuntime().exec(sshCmd);
-            p.waitFor();
-            assert !p.isAlive();
-            assert p.exitValue() == 0;
-        } catch (IOException e) {
-            logger.error("Unable to launch server with ssh (" + n + ")", e);
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            logger.error("Receive an interrupt", e);
-            e.printStackTrace();
-        }
-        return n;
+        Collection<IECSNode> nodes = addNodes(1, cacheStrategy, cacheSize);
+        assert nodes.size() <= 1;
+        return nodes.size() == 1 ? (IECSNode) nodes.toArray()[0] : null;
     }
 
     @Override
     public Collection<IECSNode> addNodes(int count, String cacheStrategy, int cacheSize) {
-        List<IECSNode> nodeList = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            nodeList.add(addNode(cacheStrategy, cacheSize));
+        Collection<IECSNode> nodes = setupNodes(count, cacheStrategy, cacheSize);
+        if (nodes == null) return null;
+
+        for (IECSNode n : nodes) {
+            assert n != null;
+            // Issue the ssh call to start the process remotely
+            String javaCmd = String.join(" ",
+                    "java -jar",
+                    JAR_PATH,
+                    Integer.toString(n.getNodePort()),
+                    Integer.toString(cacheSize),
+                    cacheStrategy);
+            String sshCmd = "ssh -o StrictHostKeyChecking=no -n " + n.getNodeHost() + " nohup " + javaCmd +
+                    " > ./logs/output.log 2> ./logs/err.log &";
+            // Redirect output to files so that ssh channel will not wait for further output
+            try {
+                logger.info("Executing command: " + sshCmd);
+                Process p = Runtime.getRuntime().exec(sshCmd);
+                p.waitFor();
+                assert !p.isAlive();
+                assert p.exitValue() == 0;
+            } catch (IOException e) {
+                logger.error("Unable to launch server with ssh (" + n + ")", e);
+                e.printStackTrace();
+                nodes.remove(n); // Connection failed, remove instance from result collection
+            } catch (InterruptedException e) {
+                logger.error("Receive an interrupt", e);
+                e.printStackTrace();
+                nodes.remove(n);
+            }
         }
-        return nodeList;
+        return nodes;
     }
 
     @Override
     public Collection<IECSNode> setupNodes(int count, String cacheStrategy, int cacheSize) {
+        if (count > nodePool.size()) return null;
+
         List<IECSNode> nodeList = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            nodeList.add(setupNode(cacheStrategy, cacheSize));
+            ECSNode n = (ECSNode) nodePool.poll();
+            nodeList.add(n);
+            hashRing.addNode(n);
+        }
+
+        byte[] metadata = new Gson().toJson(new ServerMetaData(cacheStrategy, cacheSize)).getBytes();
+
+        // create corresponding Z-nodes on zookeeper server
+        try {
+            ZooKeeper zk = new ZooKeeper(ZK_CONN, ZK_TIMEOUT, null);
+
+            if (zk.exists(ZK_SERVER_ROOT, false) == null) {
+                zk.create(ZK_SERVER_ROOT, "".getBytes(),
+                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+
+            for (IECSNode n : nodeList) {
+                Stat exists = zk.exists(getNodePath(n), false);
+                if (exists == null)
+                    zk.create(getNodePath(n), metadata,
+                            ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                else
+                    zk.setData(getNodePath(n), metadata, exists.getVersion());
+
+            }
+        } catch (IOException
+                | InterruptedException
+                | KeeperException e) {
+            logger.error("Unable to connect to ZooKeeper server");
+            e.printStackTrace();
+            return null;
         }
         return nodeList;
     }
@@ -146,4 +205,9 @@ public class ECS implements IECSClient {
         return hashRing.getNodeByKey(key);
     }
 
+    public static void main(String[] args) throws IOException {
+        new LogSetup("logs/ecs.log", Level.ALL);
+        ECS ecs = new ECS("./ecs.config");
+        ecs.addNode("None", 1024);
+    }
 }
