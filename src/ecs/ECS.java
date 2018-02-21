@@ -2,6 +2,7 @@ package ecs;
 
 import app_kvECS.IECSClient;
 import com.google.gson.Gson;
+import common.messages.KVAdminMessage;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class handles core functionality of external configuration service
@@ -55,6 +57,8 @@ public class ECS implements IECSClient {
      * ZooKeeper instance used to communicate with zk server
      */
     private ZooKeeper zk;
+
+    private long timestamp = 0;
 
     public class ECSConfigFormatException extends RuntimeException {
         public ECSConfigFormatException(String msg) {
@@ -104,10 +108,61 @@ public class ECS implements IECSClient {
         }
     }
 
+    private void sendTo(ECSNode des, KVAdminMessage msg, Watcher onRecv)
+            throws KeeperException, InterruptedException {
+        String msgPath = getNodePath(des) + "/message" + timestamp;
+        timestamp++;
+        zk.create(msgPath, msg.encode().getBytes(),
+                ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        zk.exists(msgPath, onRecv);
+    }
+
     @Override
     public boolean start() throws Exception {
-        // update hashRing
-        return false;
+        List<ECSNode> toStart = new ArrayList<>();
+        for (Map.Entry<String, IECSNode> entry : nodeTable.entrySet()) {
+            ECSNode n = (ECSNode) entry.getValue();
+            if (n.getStatus().equals(ECSNode.ServerStatus.STOP)) {
+                toStart.add(n);
+            }
+        }
+        CountDownLatch sig = new CountDownLatch(toStart.size());
+        List<String> errors = new ArrayList<>();
+        for (ECSNode n : toStart) {
+            sendTo(n, new KVAdminMessage(KVAdminMessage.OperationType.START), new Watcher() {
+                @Override
+                public void process(WatchedEvent event) {
+                    sig.countDown();
+                    String error = null;
+                    switch (event.getType()) {
+                        case NodeDeleted:
+                            // The message is received and properly handled by the server
+                            hashRing.addNode(n);
+                            break;
+                        case NodeDataChanged:
+                            try {
+                                error = new String(zk.getData(event.getPath(), false, null));
+                            } catch (KeeperException e) {
+                                error = "issue encountered querying error message at node " + event.getPath() +
+                                        "\n" + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
+                            } catch (InterruptedException e) {
+                                error = "Got interrupted retrieving error message at node " + event.getPath();
+                            }
+                            break;
+                        default:
+                            error = "Unexpected type received: " + event.getType()
+                                    + " from node " + event.getPath();
+                    }
+                    if (error != null)
+                        errors.add(error);
+                }
+            });
+        }
+        boolean sigWait = sig.await(ZK_TIMEOUT, TimeUnit.MICROSECONDS);
+        for (String error : errors) {
+            logger.error(error);
+        }
+        return sigWait && (errors.size() == 0);
     }
 
     @Override
@@ -163,6 +218,11 @@ public class ECS implements IECSClient {
                 e.printStackTrace();
                 nodes.remove(n);
             }
+        }
+
+        for (IECSNode n : nodes) {
+            ((ECSNode) n).setStatus(ECSNode.ServerStatus.STOP);
+            nodeTable.put(n.getNodeName(), n);
         }
         return nodes;
     }

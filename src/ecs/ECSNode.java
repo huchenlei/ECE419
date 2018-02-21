@@ -1,5 +1,6 @@
 package ecs;
 
+import app_kvServer.KVServer;
 import org.apache.log4j.Logger;
 
 import java.math.BigInteger;
@@ -30,10 +31,27 @@ public class ECSNode implements IECSNode {
     private String hash = null;
     private ECSNode prev;
 
+    public enum ServerStatus {
+        OFFLINE,
+        STOP,
+        ACTIVE,
+    }
+
+    private ServerStatus status;
+
+    public ServerStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ServerStatus status) {
+        this.status = status;
+    }
+
     public ECSNode(String name, String host, Integer port) {
         this.name = name;
         this.host = host;
         this.port = port;
+        this.status = ServerStatus.OFFLINE;
     }
 
     public ECSNode(String name, String host, Integer port, ECSNode prev) {

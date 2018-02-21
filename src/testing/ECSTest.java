@@ -64,4 +64,11 @@ public class ECSTest extends TestCase {
         nodes = ecs.addNodes(BIG_SERVER_NUM, CACHE_STRATEGY, CACHE_SIZE);
         assertNull(nodes);
     }
+
+    /**
+     * Starts all servers just added
+     */
+    public void testStart() throws Exception {
+        ecs.start();
+    }
 }
