@@ -20,6 +20,7 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 
 public class KVServer implements IKVServer, Runnable, Watcher {
@@ -107,7 +108,22 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         zkPath = ZK_SERVER_ROOT + "/" + name;
         String connectString = this.zkHostName + ":" + Integer.toString(this.zkPort);
         try {
-            this.zk = new ZooKeeper(connectString, ZK_TIMEOUT, null);
+            CountDownLatch sig = new CountDownLatch(0);
+            zk = new ZooKeeper(connectString, ZK_TIMEOUT, new Watcher() {
+                @Override
+                public void process(WatchedEvent event) {
+                    if (event.getState().equals(Event.KeeperState.SyncConnected)) {
+                        // connection fully established can proceed
+                        sig.countDown();
+                    }
+                }
+            });
+            try {
+                sig.await();
+            } catch (InterruptedException e) {
+                // Should never happen
+                e.printStackTrace();
+            }
             // the node should be created before init the server
             Stat stat = zk.exists(zkPath, false);
 
