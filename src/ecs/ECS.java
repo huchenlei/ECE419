@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * This class handles core functionality of external configuration service
@@ -108,15 +107,6 @@ public class ECS implements IECSClient {
         }
     }
 
-    private void sendTo(ECSNode des, KVAdminMessage msg, Watcher onRecv)
-            throws KeeperException, InterruptedException {
-        String msgPath = getNodePath(des) + "/message" + timestamp;
-        timestamp++;
-        zk.create(msgPath, msg.encode().getBytes(),
-                ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-        zk.exists(msgPath, onRecv);
-    }
-
     @Override
     public boolean start() throws Exception {
         List<ECSNode> toStart = new ArrayList<>();
@@ -126,43 +116,15 @@ public class ECS implements IECSClient {
                 toStart.add(n);
             }
         }
-        CountDownLatch sig = new CountDownLatch(toStart.size());
-        List<String> errors = new ArrayList<>();
-        for (ECSNode n : toStart) {
-            sendTo(n, new KVAdminMessage(KVAdminMessage.OperationType.START), new Watcher() {
-                @Override
-                public void process(WatchedEvent event) {
-                    sig.countDown();
-                    String error = null;
-                    switch (event.getType()) {
-                        case NodeDeleted:
-                            // The message is received and properly handled by the server
-                            hashRing.addNode(n);
-                            break;
-                        case NodeDataChanged:
-                            try {
-                                error = new String(zk.getData(event.getPath(), false, null));
-                            } catch (KeeperException e) {
-                                error = "issue encountered querying error message at node " + event.getPath() +
-                                        "\n" + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace());
-                            } catch (InterruptedException e) {
-                                error = "Got interrupted retrieving error message at node " + event.getPath();
-                            }
-                            break;
-                        default:
-                            error = "Unexpected type received: " + event.getType()
-                                    + " from node " + event.getPath();
-                    }
-                    if (error != null)
-                        errors.add(error);
-                }
-            });
+        ECSMulticaster multicaster = new ECSMulticaster(zk, toStart);
+        boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.START));
+
+        for (ECSNode n: toStart) {
+            if (!multicaster.getErrors().keySet().contains(n)) {
+                hashRing.addNode(n);
+            }
         }
-        boolean sigWait = sig.await(ZK_TIMEOUT, TimeUnit.MILLISECONDS);
-        for (String error : errors) {
-            logger.error(error);
-        }
-        return sigWait && (errors.size() == 0);
+        return ret;
     }
 
     @Override
