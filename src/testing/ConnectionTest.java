@@ -2,6 +2,7 @@ package testing;
 
 import java.net.UnknownHostException;
 
+import app_kvServer.KVServer;
 import client.KVStore;
 
 import junit.framework.TestCase;
@@ -51,8 +52,12 @@ public class ConnectionTest extends TestCase {
 		
 		assertTrue(ex instanceof IllegalArgumentException);
 	}
-	
-	
+
+
+	public void testInitialKVServer() {
+		KVServer server = new KVServer("Server1", "localhost", 2181);
+
+	}
 
 	
 }

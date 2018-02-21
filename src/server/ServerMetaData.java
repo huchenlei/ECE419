@@ -8,4 +8,12 @@ public class ServerMetaData {
         this.cacheStrategy = cacheStrategy;
         this.cacheSize = cacheSize;
     }
+
+    public String getCacheStrategy() {
+        return cacheStrategy;
+    }
+
+    public Integer getCacheSize() {
+        return cacheSize;
+    }
 }
