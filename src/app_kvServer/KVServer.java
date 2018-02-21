@@ -6,10 +6,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
-import server.KVIterateStore;
-import server.KVPersistentStore;
-import server.KVServerConnection;
-import server.ServerMetaData;
+import server.*;
 import server.cache.KVCache;
 import server.cache.KVFIFOCache;
 
@@ -31,14 +28,33 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         List<String> children = null;
         try {
             children = zk.getChildren(zkPath, false, null);
-            if (children.contains("Start")){
-                zk.delete(zkPath + "/Start",zk.exists(zkPath + "/Start",false).getVersion());
+            if (children.isEmpty()){
+                zk.getChildren(zkPath, this, null);
+                return;
+            }
+
+            // assume there is only one kind of message to handle at the same time
+            if (children.contains("Receive")){
+                int receivePort = this.receiveData();
+                String path = zkPath + "/Receive";
+                zk.setData(path, Integer.toString(receivePort).getBytes(), zk.exists(path,false).getVersion());
+                logger.info("Waiting for data transfer on port " + receivePort);
+                lockWrite();
+            }
+            if (children.contains("Send")){
+
+            }
+
+            else if (children.contains("Start")){
                 this.start();
+                String path = zkPath + "/Start";
+                zk.delete(path,zk.exists(path,false).getVersion());
                 logger.info("Server started.");
             }
             else if (children.contains("Stop")){
-                zk.delete(zkPath + "/Stop",zk.exists(zkPath + "/Stop",false).getVersion());
                 this.stop();
+                String path = zkPath + "/Stop";
+                zk.delete(path,zk.exists(path,false).getVersion());
                 logger.info("Server stopped.");
             }
             else {
@@ -72,6 +88,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     private boolean running;
     private ServerSocket serverSocket;
+    private ServerSocket receiverSocket;
 
     private ServerStatus status;
     private String serverName;
@@ -146,12 +163,43 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             this.cacheSize = json.getCacheSize();
             this.strategy = CacheStrategy.valueOf(json.getCacheStrategy());
 
+            if (this.strategy == CacheStrategy.None) {
+                this.cache = null;
+            } else {
+                // Use reflection to dynamically initialize the cache based on strategy name
+                try {
+                    Constructor<?> cons = Class.forName("server.cache.KV" + strategy + "Cache").getConstructor(Integer.class);
+                    this.cache = (KVCache) cons.newInstance(cacheSize);
+                } catch (ClassNotFoundException |
+                        NoSuchMethodException |
+                        IllegalAccessException |
+                        InstantiationException |
+                        InvocationTargetException e) {
+                    logger.fatal("Component of KVServer is not found, please check the integrity of jar package");
+                    e.printStackTrace();
+                }
+            }
+            this.store = new KVIterateStore("iterateDataBase");
+
             // set watcher on childrens
             zk.getChildren(this.zkPath, this, null);
 
         } catch (IOException|InterruptedException|KeeperException e) {
             logger.error("Unable to connect to zookeeper");
             e.printStackTrace();
+        }
+
+    }
+    public int receiveData() {
+        try {
+            receiverSocket = new ServerSocket(0);
+            int port = receiverSocket.getLocalPort();
+            new Thread(new KVServerReceiver(this, receiverSocket)).start();
+            return port;
+        } catch (IOException e) {
+            logger.error("Unable to open a receiver socket!");
+            e.printStackTrace();
+            return 0; // this exception should be handled by ecs
         }
 
     }
@@ -277,11 +325,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public void lockWrite() {
+        logger.info("Server status change to WRITE_LOCK");
         this.status = ServerStatus.LOCK;
     }
 
     @Override
     public void unlockWrite() {
+        logger.info("Server Unlock Write");
         this.status = ServerStatus.START;
     }
 
@@ -354,7 +404,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             else if (args.length == 4) {
                 KVServer server = new KVServer(args[1], args[2], Integer.parseInt(args[3]));
                 server.port = Integer.parseInt(args[0]);
-                server.run();
+                new Thread(server).start();
             }
         } catch (NumberFormatException nfe) {
             System.err.println("Error! Invalid <port> or Invalid <cache size>! Not a number!");
