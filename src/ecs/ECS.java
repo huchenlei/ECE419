@@ -3,8 +3,6 @@ package ecs;
 import app_kvECS.IECSClient;
 import com.google.gson.Gson;
 import common.messages.KVAdminMessage;
-import logger.LogSetup;
-import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
@@ -17,6 +15,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.stream.Collectors;
 
 /**
  * This class handles core functionality of external configuration service
@@ -90,13 +89,10 @@ public class ECS implements IECSClient {
         }
 
         CountDownLatch sig = new CountDownLatch(0);
-        zk = new ZooKeeper(ZK_CONN, ZK_TIMEOUT, new Watcher() {
-            @Override
-            public void process(WatchedEvent event) {
-                if (event.getState().equals(Event.KeeperState.SyncConnected)) {
-                    // connection fully established can proceed
-                    sig.countDown();
-                }
+        zk = new ZooKeeper(ZK_CONN, ZK_TIMEOUT, event -> {
+            if (event.getState().equals(Watcher.Event.KeeperState.SyncConnected)) {
+                // connection fully established can proceed
+                sig.countDown();
             }
         });
         try {
@@ -119,7 +115,7 @@ public class ECS implements IECSClient {
         ECSMulticaster multicaster = new ECSMulticaster(zk, toStart);
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.START));
 
-        for (ECSNode n: toStart) {
+        for (ECSNode n : toStart) {
             if (!multicaster.getErrors().keySet().contains(n)) {
                 hashRing.addNode(n);
             }
@@ -129,12 +125,31 @@ public class ECS implements IECSClient {
 
     @Override
     public boolean stop() throws Exception {
-        return false;
+        List<ECSNode> toStop = new ArrayList<>();
+        for (Map.Entry<String, IECSNode> entry : nodeTable.entrySet()) {
+            ECSNode n = (ECSNode) entry.getValue();
+            if (n.getStatus().equals(ECSNode.ServerStatus.ACTIVE)) {
+                toStop.add(n);
+            }
+        }
+        ECSMulticaster multicaster = new ECSMulticaster(zk, toStop);
+        boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.STOP));
+
+        for (ECSNode n : toStop) {
+            if (!multicaster.getErrors().keySet().contains(n)) {
+                hashRing.removeNode(n);
+            }
+        }
+        return ret;
     }
 
     @Override
     public boolean shutdown() throws Exception {
-        return false;
+        ECSMulticaster multicaster = new ECSMulticaster(zk, nodeTable.values()
+                .stream().map((n) -> (ECSNode) n).collect(Collectors.toList()));
+        boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.STOP));
+        hashRing.removeAll();
+        return ret;
     }
 
     static String getNodePath(IECSNode node) {
@@ -183,8 +198,16 @@ public class ECS implements IECSClient {
         }
 
         for (IECSNode n : nodes) {
-            ((ECSNode) n).setStatus(ECSNode.ServerStatus.STOP);
+            ((ECSNode) n).setStatus(ECSNode.ServerStatus.INACTIVE);
             nodeTable.put(n.getNodeName(), n);
+        }
+
+
+        try {
+            awaitNodes(count, ZK_TIMEOUT);
+        } catch (Exception e) {
+            logger.error(e);
+            return null;
         }
         return nodes;
     }
@@ -227,12 +250,35 @@ public class ECS implements IECSClient {
 
     @Override
     public boolean awaitNodes(int count, int timeout) throws Exception {
-        return false;
+        List<ECSNode> toWait = nodeTable.values().stream()
+                .map((n) -> (ECSNode) n)
+                .filter((n) -> n.getStatus().equals(ECSNode.ServerStatus.INACTIVE))
+                .collect(Collectors.toList());
+
+        ECSMulticaster multicaster = new ECSMulticaster(zk, toWait);
+        return multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.INIT));
     }
 
     @Override
     public boolean removeNodes(Collection<String> nodeNames) {
-        return false;
+        List<ECSNode> toRemove = nodeTable.values().stream()
+                .map((n) -> (ECSNode) n)
+                .filter(n -> nodeNames.contains(n.getNodeName()))
+                .collect(Collectors.toList());
+
+        ECSMulticaster multicaster = new ECSMulticaster(zk, toRemove);
+        boolean ret;
+        try {
+            ret =  multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            ret = false;
+        }
+
+        if (ret) {
+            toRemove.forEach(n -> hashRing.removeNode(n));
+        }
+        return ret;
     }
 
     @Override
@@ -243,11 +289,5 @@ public class ECS implements IECSClient {
     @Override
     public IECSNode getNodeByKey(String key) {
         return hashRing.getNodeByKey(key);
-    }
-
-    public static void main(String[] args) throws IOException {
-        new LogSetup("logs/ecs.log", Level.ALL);
-        ECS ecs = new ECS("./ecs.config");
-        ecs.addNode("None", 1024);
     }
 }

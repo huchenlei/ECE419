@@ -33,6 +33,7 @@ public class ECSNode implements IECSNode {
 
     public enum ServerStatus {
         OFFLINE,
+        INACTIVE, // ssh launched but not yet communicate with ECS yet
         STOP,
         ACTIVE,
     }

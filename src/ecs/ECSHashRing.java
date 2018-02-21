@@ -93,6 +93,20 @@ public class ECSHashRing {
         }
     }
 
+    /**
+     * Remove all nodes in HashRing
+     */
+    public void removeAll() {
+        if (root == null) return;
+
+        ECSNode currentNode = root;
+        while (currentNode != null) {
+            ECSNode prev = currentNode.getPrev();
+            currentNode.setPrev(null);
+            currentNode = prev;
+        }
+    }
+
     public class HashRingException extends RuntimeException {
         public HashRingException(String msg) {
             super(msg);

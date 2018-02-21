@@ -56,6 +56,7 @@ public interface IECSClient {
 
     /**
      * Wait for all nodes to report status or until timeout expires
+     * Something we need to do after adding nodes
      *
      * @param count   number of nodes to wait for
      * @param timeout the timeout in milliseconds
