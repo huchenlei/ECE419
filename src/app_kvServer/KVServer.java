@@ -128,7 +128,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             Stat stat = zk.exists(zkPath, false);
 
             // retrieve cache info from zookeeper
-            byte [] cacheData = zk.getData(zkPath, false, null);
+            byte[] cacheData = zk.getData(zkPath, false, null);
             String cacheString = new String(cacheData);
             ServerMetaData json = new Gson().fromJson(cacheString, ServerMetaData.class);
             this.cacheSize = json.getCacheSize();
@@ -155,7 +155,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             // set watcher on childrens
             zk.getChildren(this.zkPath, this, null);
 
-        } catch (IOException|InterruptedException|KeeperException e) {
+        } catch (IOException | InterruptedException | KeeperException e) {
             logger.error("Unable to connect to zookeeper");
             e.printStackTrace();
         }
@@ -167,18 +167,18 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         List<String> children = null;
         try {
             children = zk.getChildren(zkPath, false, null);
-            if (children.isEmpty() || !("message").equals(children.get(0))){
+            if (children.isEmpty() || !("message").equals(children.get(0))) {
                 // re-register the watch
                 zk.getChildren(zkPath, this, null);
                 return;
             }
 
-            String path = zkPath+"message";
+            String path = zkPath + "message";
 
             // handling event, assume there is only one message named "message"
-            byte[] data = zk.getData(zkPath+"message", false, null);
+            byte[] data = zk.getData(zkPath + "message", false, null);
             KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
-            switch (message.getOperationType()){
+            switch (message.getOperationType()) {
                 case SHUT_DOWN:
                     break;
                 case LOCK_WRITE:
@@ -191,7 +191,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     int receivePort = this.receiveData();
                     // simply write a integer in it
                     zk.setData(path, Integer.toString(receivePort).getBytes(),
-                            zk.exists(path,false).getVersion());
+                            zk.exists(path, false).getVersion());
                     logger.info("Waiting for data transfer on port " + receivePort);
                     break;
 
@@ -202,13 +202,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
                 case START:
                     this.start();
-                    zk.delete(path,zk.exists(path,false).getVersion());
+                    zk.delete(path, zk.exists(path, false).getVersion());
                     logger.info("Server started.");
                     break;
 
                 case STOP:
                     this.stop();
-                    zk.delete(path,zk.exists(path,false).getVersion());
+                    zk.delete(path, zk.exists(path, false).getVersion());
                     logger.info("Server stopped.");
                     break;
 
@@ -216,7 +216,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
             // re-register the watch
             zk.getChildren(zkPath, this, null);
-        } catch (KeeperException|InterruptedException e) {
+        } catch (KeeperException | InterruptedException e) {
             logger.error("Unable to process the watcher event");
             e.printStackTrace();
         }
@@ -465,19 +465,17 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     public static void main(String[] args) {
         try {
             new LogSetup("logs/server.log", Level.ALL);
-            if (args.length < 3 && args.length > 4) {
+            if (args.length < 3 || args.length > 4) {
                 System.err.println("Error! Invalid number of arguments!");
                 System.err.println("Usage: Server <port> <cache size> <strategy>!");
                 System.err.println("Usage: Server <port> <serverName> <kvHost> <kvPort>!");
-            }
-            else if (args.length == 3) {
+            } else if (args.length == 3) {
                 new Thread(new KVServer(
                         Integer.parseInt(args[0]),
                         Integer.parseInt(args[1]),
                         args[2]
                 )).start();
-            }
-            else if (args.length == 4) {
+            } else {
                 KVServer server = new KVServer(args[1], args[2], Integer.parseInt(args[3]));
                 server.port = Integer.parseInt(args[0]);
                 new Thread(server).start();
