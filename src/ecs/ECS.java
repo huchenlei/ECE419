@@ -5,10 +5,7 @@ import com.google.gson.Gson;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import server.ServerMetaData;
 
@@ -18,6 +15,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * This class handles core functionality of external configuration service
@@ -50,6 +48,11 @@ public class ECS implements IECSClient {
      */
     private ECSHashRing hashRing = new ECSHashRing();
 
+    /**
+     * ZooKeeper instance used to communicate with zk server
+     */
+    private ZooKeeper zk;
+
     public class ECSConfigFormatException extends RuntimeException {
         public ECSConfigFormatException(String msg) {
             super(msg);
@@ -78,6 +81,23 @@ public class ECS implements IECSClient {
                 namePool.add(name);
                 logger.info(newNode + " added to node pool");
             }
+        }
+
+        CountDownLatch sig = new CountDownLatch(0);
+        zk = new ZooKeeper(ZK_CONN, ZK_TIMEOUT, new Watcher() {
+            @Override
+            public void process(WatchedEvent event) {
+                if (event.getState().equals(Event.KeeperState.SyncConnected)) {
+                    // connection fully established can proceed
+                    sig.countDown();
+                }
+            }
+        });
+        try {
+            sig.await();
+        } catch (InterruptedException e) {
+            // Should never happen
+            e.printStackTrace();
         }
     }
 
@@ -159,8 +179,6 @@ public class ECS implements IECSClient {
 
         // create corresponding Z-nodes on zookeeper server
         try {
-            ZooKeeper zk = new ZooKeeper(ZK_CONN, ZK_TIMEOUT, null);
-
             if (zk.exists(ZK_SERVER_ROOT, false) == null) {
                 zk.create(ZK_SERVER_ROOT, "".getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
@@ -175,10 +193,8 @@ public class ECS implements IECSClient {
                     zk.setData(getNodePath(n), metadata, exists.getVersion());
 
             }
-        } catch (IOException
-                | InterruptedException
-                | KeeperException e) {
-            logger.error("Unable to connect to ZooKeeper server");
+        } catch (InterruptedException | KeeperException e) {
+            logger.error("Issue encountered with ZooKeeper server");
             e.printStackTrace();
             return null;
         }
