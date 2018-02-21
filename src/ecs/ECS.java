@@ -25,7 +25,10 @@ public class ECS implements IECSClient {
     // Assumes that the jar file is located at the same dir on the remote server
     private static final String JAR_PATH = new File(System.getProperty("user.dir"), SERVER_JAR).toString();
     // Assumes that ZooKeeper runs on localhost default port(2181)
-    private static final String ZK_CONN = "localhost:2181";
+    private static final String ZK_HOST = "127.0.0.1";
+    private static final String ZK_PORT = "2181";
+    private static final String ZK_CONN = ZK_HOST + ":" + ZK_PORT;
+
     // ZooKeeper connection timeout in millisecond
     private static final int ZK_TIMEOUT = 2000;
 
@@ -103,7 +106,7 @@ public class ECS implements IECSClient {
 
     @Override
     public boolean start() throws Exception {
-        logger.info("Starting all storage services");
+        // update hashRing
         return false;
     }
 
@@ -139,9 +142,9 @@ public class ECS implements IECSClient {
             String javaCmd = String.join(" ",
                     "java -jar",
                     JAR_PATH,
-                    Integer.toString(n.getNodePort()),
-                    Integer.toString(cacheSize),
-                    cacheStrategy);
+                    n.getNodeName(),
+                    ZK_HOST,
+                    ZK_PORT);
             String sshCmd = "ssh -o StrictHostKeyChecking=no -n " + n.getNodeHost() + " nohup " + javaCmd +
                     " > ./logs/output.log 2> ./logs/err.log &";
             // Redirect output to files so that ssh channel will not wait for further output
@@ -172,7 +175,6 @@ public class ECS implements IECSClient {
         for (int i = 0; i < count; i++) {
             ECSNode n = (ECSNode) nodePool.poll();
             nodeList.add(n);
-            hashRing.addNode(n);
         }
 
         byte[] metadata = new Gson().toJson(new ServerMetaData(cacheStrategy, cacheSize)).getBytes();
