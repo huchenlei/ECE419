@@ -55,8 +55,16 @@ public class ConnectionTest extends TestCase {
 
 
 	public void testInitialKVServer() {
-		KVServer server = new KVServer("Server1", "localhost", 2181);
+		KVServer server1 = new KVServer("Server1", "localhost", 2181);
+		KVServer server2 = new KVServer("Server2", "localhost", 2181);
+		int port = server1.receiveData();
 
+		server2.sendData(null,"localhost", port);
+		try {
+			Thread.sleep(10000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	

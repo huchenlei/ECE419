@@ -184,6 +184,12 @@ public class KVIterateStore implements KVPersistentStore {
         return (value != null);
     }
 
+    @Override
+    public String getfileName() {
+        return this.dir + "/" + this.fileName;
+    }
+
+
     private void openFile() {
         if (this.storageFile == null) {
             logger.info(prompt + "Initialize iterate storage file ...");

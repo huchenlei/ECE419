@@ -87,6 +87,8 @@ public interface IKVServer {
 
     public void run();
 
+    public String getStorageName();
+
     /**
      * Gracefully stop the server, can perform any additional actions
      */

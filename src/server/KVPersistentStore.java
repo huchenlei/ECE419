@@ -6,5 +6,6 @@ public interface KVPersistentStore {
     public String get(String key) throws Exception;
     public void clearStorage();
     public boolean inStorage(String key) throws Exception;
+    public String getfileName();
 
 }

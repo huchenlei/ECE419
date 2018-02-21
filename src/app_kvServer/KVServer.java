@@ -1,6 +1,7 @@
 package app_kvServer;
 
 import com.google.gson.Gson;
+import common.messages.KVAdminMessage;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -10,7 +11,7 @@ import server.*;
 import server.cache.KVCache;
 import server.cache.KVFIFOCache;
 
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
@@ -23,53 +24,6 @@ import java.util.Map;
 
 public class KVServer implements IKVServer, Runnable, Watcher {
 
-    @Override
-    public void process(WatchedEvent event) {
-        List<String> children = null;
-        try {
-            children = zk.getChildren(zkPath, false, null);
-            if (children.isEmpty()){
-                zk.getChildren(zkPath, this, null);
-                return;
-            }
-
-            // assume there is only one kind of message to handle at the same time
-            if (children.contains("Receive")){
-                int receivePort = this.receiveData();
-                String path = zkPath + "/Receive";
-                zk.setData(path, Integer.toString(receivePort).getBytes(), zk.exists(path,false).getVersion());
-                logger.info("Waiting for data transfer on port " + receivePort);
-                lockWrite();
-            }
-            if (children.contains("Send")){
-
-            }
-
-            else if (children.contains("Start")){
-                this.start();
-                String path = zkPath + "/Start";
-                zk.delete(path,zk.exists(path,false).getVersion());
-                logger.info("Server started.");
-            }
-            else if (children.contains("Stop")){
-                this.stop();
-                String path = zkPath + "/Stop";
-                zk.delete(path,zk.exists(path,false).getVersion());
-                logger.info("Server stopped.");
-            }
-            else {
-                System.out.println("========");
-                for(int i = 0; i < children.size(); i++)
-                    System.out.println(children.get(i)); //Print children's
-            }
-            // re-register the watch
-            zk.getChildren(zkPath, this, null);
-        } catch (KeeperException|InterruptedException e) {
-            logger.error("Unable to process the watcher event");
-            e.printStackTrace();
-        }
-
-    }
 
     public enum ServerStatus {
         START,       /* server works correctly */
@@ -79,6 +33,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     public static final Integer MAX_KEY = 20;
     public static final Integer MAX_VAL = 120 * 1024;
+    public static final Integer BUFFER_SIZE = 1024;
 
     private static Logger logger = Logger.getRootLogger();
 
@@ -179,7 +134,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     e.printStackTrace();
                 }
             }
-            this.store = new KVIterateStore("iterateDataBase");
+            this.store = new KVIterateStore(name + "_iterateDataBase");
 
             // set watcher on childrens
             zk.getChildren(this.zkPath, this, null);
@@ -190,11 +145,75 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         }
 
     }
+
+    @Override
+    public void process(WatchedEvent event) {
+        List<String> children = null;
+        try {
+            children = zk.getChildren(zkPath, false, null);
+            if (children.isEmpty() || !("message").equals(children.get(0))){
+                // re-register the watch
+                zk.getChildren(zkPath, this, null);
+                return;
+            }
+
+            String path = zkPath+"message";
+
+            // handling event, assume there is only one message named "message"
+            byte[] data = zk.getData(zkPath+"message", false, null);
+            KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
+            switch (message.getOperationType()){
+                case SHUT_DOWN:
+                    break;
+                case LOCK_WRITE:
+                    break;
+                case UNLOCK_WRITE:
+                    break;
+                case UPDATE:
+                    break;
+                case RECEIVE:
+                    int receivePort = this.receiveData();
+                    // simply write a integer in it
+                    zk.setData(path, Integer.toString(receivePort).getBytes(),
+                            zk.exists(path,false).getVersion());
+                    logger.info("Waiting for data transfer on port " + receivePort);
+                    break;
+
+                case SEND:
+                    // TODO: think about it
+                    sendData(message.getHashRange(), message.getReceiverHost(), message.getReceiverPort());
+                    break;
+
+                case START:
+                    this.start();
+                    zk.delete(path,zk.exists(path,false).getVersion());
+                    logger.info("Server started.");
+                    break;
+
+                case STOP:
+                    this.stop();
+                    zk.delete(path,zk.exists(path,false).getVersion());
+                    logger.info("Server stopped.");
+                    break;
+
+            }
+
+            // re-register the watch
+            zk.getChildren(zkPath, this, null);
+        } catch (KeeperException|InterruptedException e) {
+            logger.error("Unable to process the watcher event");
+            e.printStackTrace();
+        }
+
+    }
+
+
     public int receiveData() {
         try {
             receiverSocket = new ServerSocket(0);
             int port = receiverSocket.getLocalPort();
             new Thread(new KVServerReceiver(this, receiverSocket)).start();
+            lockWrite();
             return port;
         } catch (IOException e) {
             logger.error("Unable to open a receiver socket!");
@@ -206,6 +225,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     public ServerStatus getServerStatus() {
         return status;
+    }
+
+    @Override
+    public String getStorageName() {
+        return this.store.getfileName();
     }
 
     @Override
@@ -337,7 +361,43 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public boolean moveData(String[] hashRange, String targetName) throws Exception {
+        // Don't want to get ip and host from target name
         return false;
+    }
+
+    public boolean sendData(String[] hashRange, String targetHost, int targetPort) {
+        try {
+            this.lockWrite();
+
+            // TODO: move in range kv pairs into a new file
+
+
+            byte[] buffer = new byte[BUFFER_SIZE];
+            Socket clientSocket = new Socket(targetHost, targetPort);
+            BufferedOutputStream out = new BufferedOutputStream(clientSocket.getOutputStream());
+            BufferedInputStream in = new BufferedInputStream(new FileInputStream(this.store.getfileName()));
+
+            int len = 0;
+            while ((len = in.read(buffer)) > 0) {
+                out.write(buffer, 0, len);
+            }
+            in.close();
+            out.flush();
+            out.close();
+            clientSocket.close();
+            this.unlockWrite();
+
+            logger.info("Finish transferring data");
+
+            return true;
+        } catch (IOException e) {
+            logger.error("Unable to connect receiver");
+            e.printStackTrace();
+            this.unlockWrite();
+            return false;
+        }
+
+
     }
 
     @Override
