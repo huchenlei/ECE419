@@ -407,6 +407,6 @@ public class ECS implements IECSClient {
     }
 
     private void transferData(ECSNode from, ECSNode to, String[] hashRange) {
-        // TODO multi-thread this function
+
     }
 }
