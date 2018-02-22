@@ -8,8 +8,16 @@ public interface IKVServer {
         FIFO
     }
 
+    public enum ServerStatus {
+        START,       /* server works correctly */
+        STOP,        /* no client requests are processed */
+        LOCK         /* server is currently blocked for write requests */
+    }
+
+
     ;
 
+    public KVServer.ServerStatus getStatus();
     /**
      * Get the port number of the server
      *

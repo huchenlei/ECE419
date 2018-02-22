@@ -27,11 +27,6 @@ import java.util.concurrent.CountDownLatch;
 public class KVServer implements IKVServer, Runnable, Watcher {
 
 
-    public enum ServerStatus {
-        START,       /* server works correctly */
-        STOP,        /* no client requests are processed */
-        LOCK         /* server is currently blocked for write requests */
-    }
 
     public static final Integer MAX_KEY = 20;
     public static final Integer MAX_VAL = 120 * 1024;
@@ -214,6 +209,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 case SEND:
                     // TODO: think about it
                     sendData(message.getHashRange(), message.getReceiverHost(), message.getReceiverPort());
+                    zk.delete(path, zk.exists(path, false).getVersion());
                     break;
 
                 case START:
@@ -262,6 +258,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     @Override
     public String getStorageName() {
         return this.store.getfileName();
+    }
+
+    @Override
+    public ServerStatus getStatus() {
+        return this.status;
     }
 
     @Override

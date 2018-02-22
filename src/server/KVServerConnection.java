@@ -65,8 +65,17 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         KVMessage res = AbstractKVMessage.createMessage();
         assert res != null;
         res.setKey(m.getKey());
+
+        // stopped server can not handle any request
+        if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)){
+            res.setValue("");
+            res.setStatus(KVMessage.StatusType.SERVER_STOPPED);
+            return res;
+        }
         switch (m.getStatus()) {
             case GET: {
+                // TODO: check if key in responsible range
+
                 Exception ex = null;
                 String value = null;
                 try {
@@ -85,6 +94,12 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
             }
 
             case PUT: {
+                // if server locked, it can not handle put request
+                if (kvServer.getStatus().equals(IKVServer.ServerStatus.LOCK)){
+                    res.setValue("");
+                    res.setStatus(KVMessage.StatusType.SERVER_WRITE_LOCK);
+                    return res;
+                }
                 res.setKey(m.getKey());
                 res.setValue(m.getValue());
 
