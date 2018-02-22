@@ -10,7 +10,7 @@ import java.util.Objects;
 /**
  * Pojo class representing node in ecs
  */
-public class ECSNode implements IECSNode {
+public class ECSNode extends RawECSNode implements IECSNode {
     private static Logger logger = Logger.getRootLogger();
     private static MessageDigest md = null;
 
@@ -22,10 +22,6 @@ public class ECSNode implements IECSNode {
             e.printStackTrace();
         }
     }
-
-    private String name;
-    private String host;
-    private Integer port;
 
     private String hash = null;
     private ECSNode prev;
@@ -48,15 +44,17 @@ public class ECSNode implements IECSNode {
     }
 
     public ECSNode(String name, String host, Integer port) {
-        this.name = name;
-        this.host = host;
-        this.port = port ;
+        super(name, host, port);
         this.status = ServerStatus.OFFLINE;
     }
 
     public ECSNode(String name, String host, Integer port, ECSNode prev) {
         this(name, host, port);
         setPrev(prev);
+    }
+
+    public ECSNode(RawECSNode rn) {
+        this(rn.name, rn.host, rn.port);
     }
 
     public void setPrev(ECSNode node) {

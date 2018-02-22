@@ -9,7 +9,7 @@ import org.apache.log4j.Level;
 import org.junit.Before;
 
 import java.io.IOException;
-import java.util.Collection;
+import java.util.*;
 
 public class ECSTest extends TestCase {
     private static final Integer BIG_SERVER_NUM = 1024 * 1024;
@@ -77,6 +77,41 @@ public class ECSTest extends TestCase {
         }
 
         boolean ret = ecs.awaitNodes(count, ECS.ZK_TIMEOUT);
+        assertTrue(ret);
+    }
+
+    /**
+     * Start the nodes just added
+     */
+    public void testStartNodes() throws Exception {
+        assertNotNull(ecs);
+        boolean ret = ecs.start();
+        assertTrue(ret);
+    }
+
+    /**
+     * Remove one active node from whole service
+     */
+    public void testRemoveNodes() {
+        List<String> names = new ArrayList<>(ecs.getNodes().keySet());
+        assertTrue(names.size() > 0);
+        boolean ret = ecs.removeNodes(Collections.singletonList(names.get(0)));
+        assertTrue(ret);
+    }
+
+    /**
+     * Stop all active nodes
+     */
+    public void testStop() throws Exception {
+        boolean ret = ecs.stop();
+        assertTrue(ret);
+    }
+
+    /**
+     * Shut down all nodes
+     */
+    public void testShutdown() throws Exception {
+        boolean ret = ecs.shutdown();
         assertTrue(ret);
     }
 }

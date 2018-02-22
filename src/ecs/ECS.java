@@ -163,7 +163,7 @@ public class ECS implements IECSClient {
         if (ret) {
             hashRing.removeAll();
             nodeTable.values()
-                    .forEach(n -> ((ECSNode)n).setStatus(ECSNode.ServerStatus.OFFLINE));
+                    .forEach(n -> ((ECSNode) n).setStatus(ECSNode.ServerStatus.OFFLINE));
             nodePool.addAll(nodeTable.values());
             nodeTable.clear();
             ret = updateMetadata();
@@ -315,7 +315,13 @@ public class ECS implements IECSClient {
         }
 
         if (ret) {
-            toRemove.forEach(n -> hashRing.removeNode(n));
+            for (ECSNode n : toRemove) {
+                hashRing.removeNode(n);
+                n.setStatus(ECSNode.ServerStatus.OFFLINE);
+                nodeTable.remove(n.getNodeName());
+            }
+            nodePool.addAll(toRemove);
+
             ret = updateMetadata();
         }
         return ret;
@@ -337,9 +343,10 @@ public class ECS implements IECSClient {
      * @return Json Array
      */
     private String getHashRingJson() {
-        List<ECSNode> activeNodes = nodeTable.values().stream()
+        List<RawECSNode> activeNodes = nodeTable.values().stream()
                 .map(n -> (ECSNode) n)
                 .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
+                .map(RawECSNode::new)
                 .collect(Collectors.toList());
 
         return new Gson().toJson(activeNodes);
@@ -372,7 +379,7 @@ public class ECS implements IECSClient {
     /**
      * for nodes that are ACTIVE:
      * data are transferred from them to nearest valid node
-     *
+     * <p>
      * for nodes that are STOP:
      * data are transferred to them from nearest valid node
      *

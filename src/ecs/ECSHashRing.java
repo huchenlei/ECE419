@@ -22,14 +22,16 @@ public class ECSHashRing {
      *
      * @param nodes ECSNodes
      */
-    public ECSHashRing(Collection<ECSNode> nodes) {
-        nodes.forEach(this::addNode);
+    public ECSHashRing(Collection<RawECSNode> nodes) {
+        for (RawECSNode node : nodes) {
+            addNode(new ECSNode(node));
+        }
     }
 
     @SuppressWarnings("unchecked")
     public ECSHashRing(String jsonData) {
-        this((List<ECSNode>) new Gson().fromJson(jsonData,
-                new TypeToken<List<ECSNode>>() {
+        this((List<RawECSNode>) new Gson().fromJson(jsonData,
+                new TypeToken<List<RawECSNode>>() {
                 }.getType()));
     }
 
