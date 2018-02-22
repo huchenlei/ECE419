@@ -32,7 +32,6 @@ public class AllTests {
         List<Class<? extends TestCase>> tests = Arrays.asList(
                 ConnectionTest.class,
                 InteractionTest.class,
-                MessageTest.class,
                 FIFOCacheTest.class,
                 LFUCacheTest.class,
                 LRUCacheTest.class,
