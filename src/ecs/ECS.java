@@ -30,7 +30,7 @@ public class ECS implements IECSClient {
     private static final String ZK_CONN = ZK_HOST + ":" + ZK_PORT;
 
     // ZooKeeper connection timeout in millisecond
-    static final int ZK_TIMEOUT = 2000;
+    public static final int ZK_TIMEOUT = 2000;
 
     public static final String ZK_SERVER_ROOT = "/kv_servers";
     public static final String ZK_METADATA_ROOT = "/metadata";

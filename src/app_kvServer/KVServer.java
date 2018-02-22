@@ -2,6 +2,7 @@ package app_kvServer;
 
 import com.google.gson.Gson;
 import common.messages.KVAdminMessage;
+import ecs.ECS;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -50,8 +51,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     private String serverName;
 
     /* zookeeper info */
-    private static final int ZK_TIMEOUT = 2000;
-    private static final String ZK_SERVER_ROOT = "/kv_servers";
     private String zkHostName;
     private int zkPort;
     private ZooKeeper zk;
@@ -105,11 +104,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         this.zkHostName = zkHostName;
         this.serverName = name;
         this.zkPort = zkPort;
-        zkPath = ZK_SERVER_ROOT + "/" + name;
+        zkPath = ECS.ZK_SERVER_ROOT + "/" + name;
         String connectString = this.zkHostName + ":" + Integer.toString(this.zkPort);
         try {
             CountDownLatch sig = new CountDownLatch(0);
-            zk = new ZooKeeper(connectString, ZK_TIMEOUT, new Watcher() {
+            zk = new ZooKeeper(connectString, ECS.ZK_TIMEOUT, new Watcher() {
                 @Override
                 public void process(WatchedEvent event) {
                     if (event.getState().equals(Event.KeeperState.SyncConnected)) {
@@ -137,11 +136,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             //remove the init message if have
             List<String> children = zk.getChildren(zkPath, false, null);
             if (!children.isEmpty()){
-                byte[] data = zk.getData(zkPath + "/message", false, null);
+                String messagePath = zkPath + "/" + children.get(0);
+                byte[] data = zk.getData(messagePath, false, null);
                 KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
                 if (message.getOperationType().equals(KVAdminMessage.OperationType.INIT)){
-                    zk.delete(zkPath + "/message",
-                            zk.exists(zkPath + "/message", false).getVersion());
+                    zk.delete(messagePath, zk.exists(messagePath, false).getVersion());
                     logger.info("Server initiated");
                 }
             }
@@ -180,13 +179,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         List<String> children = null;
         try {
             children = zk.getChildren(zkPath, false, null);
-            if (children.isEmpty() || !("message").equals(children.get(0))) {
+            if (children.isEmpty()) {
                 // re-register the watch
                 zk.getChildren(zkPath, this, null);
                 return;
             }
 
-            String path = zkPath + "/message";
+            String path = zkPath + "/" + children.get(0);
 
             // handling event, assume there is only one message named "message"
             byte[] data = zk.getData(path, false, null);
