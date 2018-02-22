@@ -1,5 +1,6 @@
 package testing;
 
+import app_kvServer.KVServer;
 import ecs.ECS;
 import ecs.IECSNode;
 import junit.framework.TestCase;
@@ -51,7 +52,11 @@ public class ECSTest extends TestCase {
         assertNull(nodes);
     }
 
-    public void testAddNodes() {
+    /**
+     * This testcase is no longer in use because ssh-ing to localhost and create
+     * server instances is high un-debug-able
+     */
+    /*public void testAddNodes() {
         IECSNode node = ecs.addNode(CACHE_STRATEGY, CACHE_SIZE);
         assertNotNull(node);
 
@@ -63,12 +68,24 @@ public class ECSTest extends TestCase {
 
         nodes = ecs.addNodes(BIG_SERVER_NUM, CACHE_STRATEGY, CACHE_SIZE);
         assertNull(nodes);
-    }
+    }*/
 
-    /**
-     * Starts all servers just added
-     */
-    public void testStart() throws Exception {
-        ecs.start();
+    public void testAddNodes() throws Exception {
+        Integer count = 3;
+        Collection<IECSNode> nodes =
+                ecs.setupNodes(count, CACHE_STRATEGY, CACHE_SIZE);
+
+        assertNotNull(nodes);
+        assertEquals(count, new Integer(nodes.size()));
+
+        // Start the servers internally
+        for (IECSNode node : nodes) {
+            new Thread(
+                    new KVServer(node.getNodeName(), ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT)))
+                    .start();
+        }
+
+        boolean ret = ecs.awaitNodes(count, ECS.ZK_TIMEOUT);
+        assertTrue(ret);
     }
 }

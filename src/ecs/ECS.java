@@ -25,8 +25,8 @@ public class ECS implements IECSClient {
     // Assumes that the jar file is located at the same dir on the remote server
     private static final String JAR_PATH = new File(System.getProperty("user.dir"), SERVER_JAR).toString();
     // Assumes that ZooKeeper runs on localhost default port(2181)
-    private static final String ZK_HOST = "127.0.0.1";
-    private static final String ZK_PORT = "2181";
+    public static final String ZK_HOST = "127.0.0.1";
+    public static final String ZK_PORT = "2181";
     private static final String ZK_CONN = ZK_HOST + ":" + ZK_PORT;
 
     // ZooKeeper connection timeout in millisecond
