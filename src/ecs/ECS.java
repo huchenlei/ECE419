@@ -30,7 +30,7 @@ public class ECS implements IECSClient {
     private static final String ZK_CONN = ZK_HOST + ":" + ZK_PORT;
 
     // ZooKeeper connection timeout in millisecond
-    public static final int ZK_TIMEOUT = 2000;
+    public static final int ZK_TIMEOUT = 5000;
 
     public static final String ZK_SERVER_ROOT = "/kv_servers";
     public static final String ZK_METADATA_ROOT = "/metadata";
@@ -207,10 +207,6 @@ public class ECS implements IECSClient {
             }
         }
 
-        for (IECSNode n : nodes) {
-            ((ECSNode) n).setStatus(ECSNode.ServerStatus.INACTIVE);
-            nodeTable.put(n.getNodeName(), n);
-        }
 
         boolean ack;
         try {
@@ -219,14 +215,10 @@ public class ECS implements IECSClient {
             logger.error(e);
             return null;
         }
-
-        if (ack) {
-            nodes.forEach(n -> ((ECSNode) n).setStatus(ECSNode.ServerStatus.STOP));
+        if (ack)
             return nodes;
-        } else {
-            logger.error("Failed to receive ack from some servers");
+        else
             return null;
-        }
     }
 
     @Override
@@ -269,6 +261,12 @@ public class ECS implements IECSClient {
             e.printStackTrace();
             return null;
         }
+
+        for (IECSNode n : nodeList) {
+            ((ECSNode) n).setStatus(ECSNode.ServerStatus.INACTIVE);
+            nodeTable.put(n.getNodeName(), n);
+        }
+
         return nodeList;
     }
 
@@ -280,7 +278,9 @@ public class ECS implements IECSClient {
                 .collect(Collectors.toList());
 
         ECSMulticaster multicaster = new ECSMulticaster(zk, toWait);
-        return multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.INIT));
+        boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.INIT));
+        toWait.forEach(n -> n.setStatus(ECSNode.ServerStatus.STOP));
+        return ret;
     }
 
     @Override
