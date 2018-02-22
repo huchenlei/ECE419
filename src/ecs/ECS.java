@@ -33,6 +33,7 @@ public class ECS implements IECSClient {
     static final int ZK_TIMEOUT = 2000;
 
     public static final String ZK_SERVER_ROOT = "/kv_servers";
+    public static final String ZK_METADATA_ROOT = "/metadata";
 
     private static Logger logger = Logger.getRootLogger();
 
@@ -55,8 +56,6 @@ public class ECS implements IECSClient {
      * ZooKeeper instance used to communicate with zk server
      */
     private ZooKeeper zk;
-
-    private long timestamp = 0;
 
     public class ECSConfigFormatException extends RuntimeException {
         public ECSConfigFormatException(String msg) {
@@ -120,6 +119,7 @@ public class ECS implements IECSClient {
                 hashRing.addNode(n);
             }
         }
+        updateMetadata();
         return ret;
     }
 
@@ -140,6 +140,7 @@ public class ECS implements IECSClient {
                 hashRing.removeNode(n);
             }
         }
+        updateMetadata();
         return ret;
     }
 
@@ -148,7 +149,10 @@ public class ECS implements IECSClient {
         ECSMulticaster multicaster = new ECSMulticaster(zk, nodeTable.values()
                 .stream().map((n) -> (ECSNode) n).collect(Collectors.toList()));
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.STOP));
-        hashRing.removeAll();
+        if (ret) {
+            hashRing.removeAll();
+            ret = updateMetadata();
+        }
         return ret;
     }
 
@@ -202,14 +206,21 @@ public class ECS implements IECSClient {
             nodeTable.put(n.getNodeName(), n);
         }
 
-
+        boolean ack;
         try {
-            awaitNodes(count, ZK_TIMEOUT);
+            ack = awaitNodes(count, ZK_TIMEOUT);
         } catch (Exception e) {
             logger.error(e);
             return null;
         }
-        return nodes;
+
+        if (ack) {
+            nodes.forEach(n -> ((ECSNode) n).setStatus(ECSNode.ServerStatus.STOP));
+            return nodes;
+        } else {
+            logger.error("Failed to receive ack from some servers");
+            return null;
+        }
     }
 
     @Override
@@ -269,7 +280,7 @@ public class ECS implements IECSClient {
         ECSMulticaster multicaster = new ECSMulticaster(zk, toRemove);
         boolean ret;
         try {
-            ret =  multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
+            ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
         } catch (InterruptedException e) {
             e.printStackTrace();
             ret = false;
@@ -277,6 +288,7 @@ public class ECS implements IECSClient {
 
         if (ret) {
             toRemove.forEach(n -> hashRing.removeNode(n));
+            ret = updateMetadata();
         }
         return ret;
     }
@@ -289,5 +301,43 @@ public class ECS implements IECSClient {
     @Override
     public IECSNode getNodeByKey(String key) {
         return hashRing.getNodeByKey(key);
+    }
+
+    /**
+     * Convert currently active node to an json array
+     *
+     * @return Json Array
+     */
+    private String getHashRingJson() {
+        List<ECSNode> activeNodes = nodeTable.values().stream()
+                .map(n -> (ECSNode) n)
+                .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
+                .collect(Collectors.toList());
+
+        return new Gson().toJson(activeNodes);
+    }
+
+    /**
+     * Push the metadata(hash ring content) to ZooKeeper z-node
+     */
+    private boolean updateMetadata() {
+        try {
+            Stat exists = zk.exists(ZK_METADATA_ROOT, false);
+            if (exists == null) {
+                zk.create(ZK_METADATA_ROOT, getHashRingJson().getBytes(),
+                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            } else {
+                zk.setData(ZK_METADATA_ROOT, getHashRingJson().getBytes(),
+                        exists.getVersion());
+            }
+        } catch (InterruptedException e) {
+            logger.error("Interrupted");
+            return false;
+        } catch (KeeperException e) {
+            logger.error(e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 }

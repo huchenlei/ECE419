@@ -1,6 +1,11 @@
 package ecs;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import java.math.BigInteger;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * This class wrap the ECS Nodes and provide an LinkedList container
@@ -8,6 +13,25 @@ import java.math.BigInteger;
  */
 public class ECSHashRing {
     private ECSNode root = null;
+
+    public ECSHashRing() {
+    }
+
+    /**
+     * Initialize hash ring with given nodes
+     *
+     * @param nodes ECSNodes
+     */
+    public ECSHashRing(Collection<ECSNode> nodes) {
+        nodes.forEach(this::addNode);
+    }
+
+    @SuppressWarnings("unchecked")
+    public ECSHashRing(String jsonData) {
+        this((List<ECSNode>) new Gson().fromJson(jsonData,
+                new TypeToken<List<ECSNode>>() {
+                }.getType()));
+    }
 
     /**
      * Get the node responsible for given key
@@ -105,6 +129,8 @@ public class ECSHashRing {
             currentNode.setPrev(null);
             currentNode = prev;
         }
+
+        root = null;
     }
 
     public class HashRingException extends RuntimeException {

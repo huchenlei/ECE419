@@ -10,7 +10,9 @@ import org.apache.log4j.Logger;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ECSClient implements Runnable {
@@ -26,11 +28,12 @@ public class ECSClient implements Runnable {
 
     private static Map<String, Integer> argTable = new HashMap<String, Integer>() {
         {
-            put("init", 3);
             put("start", 0);
             put("stop", 0);
             put("shutDown", 0);
             put("help", 0);
+            put("addNode", 2);
+            put("removeNodes", 1); // remove at least one node
         }
     };
 
@@ -43,8 +46,6 @@ public class ECSClient implements Runnable {
             KVClient.checkArgumentNum(tokens, argTable.get(cmd));
 
             switch (cmd) {
-                case "init":
-                    break;
                 case "start":
                     ecs.start();
                     break;
@@ -72,7 +73,9 @@ public class ECSClient implements Runnable {
                     }
                     break;
                 case "removeNodes":
-                    // TODO remove nodes by names?
+                    List<String> serverNames = Arrays.asList(tokens);
+                    serverNames.remove(0); // remove cmd from head
+                    ecs.removeNodes(serverNames);
                     break;
                 default:
                     printError("Unknown command!");
@@ -92,7 +95,7 @@ public class ECSClient implements Runnable {
 
     private void printHelp() {
         // TODO
-        System.out.println("help!");
+        System.out.println("help! // TODO");
     }
 
     @Override
