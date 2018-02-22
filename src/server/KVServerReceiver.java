@@ -9,7 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.channels.FileChannel;
 
-public class KVServerReceiver implements Runnable{
+public class KVServerReceiver implements Runnable {
     private ServerSocket receiverSocket;
     private IKVServer kvServer;
     protected static Logger logger = Logger.getRootLogger();
@@ -65,6 +65,10 @@ public class KVServerReceiver implements Runnable{
             rTemp.close();
             raf.close();
             tempFile.delete();
+
+            // update the progress to 100
+            ((KVServer)this.kvServer).updateTransferProgress(100);
+
             // release the lock
             kvServer.unlockWrite();
 

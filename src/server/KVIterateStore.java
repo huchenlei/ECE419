@@ -3,6 +3,7 @@ package server;
 import java.io.*;
 import java.nio.channels.FileChannel;
 
+import ecs.ECSNode;
 import org.apache.log4j.Logger;
 
 public class KVIterateStore implements KVPersistentStore {
@@ -13,6 +14,9 @@ public class KVIterateStore implements KVPersistentStore {
     private String prompt = "KVIterateStore: ";
     private long startOffset;
     private long endOffset;
+    public static String MOVE_SUFFIX = "_move";
+    public static String REMAIN_SUFFIX = "_remain";
+    private String value;
 
     public KVIterateStore() {
         openFile();
@@ -30,6 +34,7 @@ public class KVIterateStore implements KVPersistentStore {
     }
 
     private String encodeValue(String value) {
+        this.value = value;
         return value.replaceAll("\r", "\\\\r").replaceAll("\n", "\\\\n");
     }
     private String decodeValue(String value) {
@@ -189,6 +194,94 @@ public class KVIterateStore implements KVPersistentStore {
         return this.dir + "/" + this.fileName;
     }
 
+    public void preMoveData(String[] hashRange){
+        File moveFile = new File(getfileName() + MOVE_SUFFIX);
+        File remainFile = new File(getfileName() + REMAIN_SUFFIX);
+
+        try {
+            moveFile.createNewFile();
+            remainFile.createNewFile();
+
+            RandomAccessFile raf = new RandomAccessFile(this.storageFile, "r");
+            RandomAccessFile moveRaf = new RandomAccessFile(moveFile, "rw");
+            RandomAccessFile remainRaf = new RandomAccessFile(remainFile, "rw");
+
+            // read original file line by line
+            String line, curKey, curValue;
+            while ((line = raf.readLine()) != null) {
+                // convert line from ISO to UTF-8
+                line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
+                this.startOffset = this.endOffset;
+                this.endOffset = raf.getFilePointer();
+                line = line.trim();
+                if (line.isEmpty()) {
+                    System.out.println("how could it be");
+                    continue;
+                }
+                String[] strs = line.split("=");
+                if (strs.length != 2) {
+                    raf.close();
+                    throw new IOException(prompt + "Invalid Entry found: " + line);
+                }
+                curKey = strs[0];
+                curValue = strs[1];
+                byte[] stringBytes = (curKey + "=" + curValue + "\r\n").getBytes("UTF-8");
+
+                // append to move file
+                if (ECSNode.isKeyInRange(curKey, hashRange)){
+                    long offset = moveRaf.length();
+                    moveRaf.seek(offset);
+                    moveRaf.write(stringBytes);
+                }
+                // append to remain file
+                else {
+                    long offset = remainRaf.length();
+                    remainRaf.seek(offset);
+                    remainRaf.write(stringBytes);
+                }
+
+            }
+
+            raf.close();
+            moveRaf.close();
+            remainRaf.close();
+
+        } catch (IOException e) {
+            logger.error(prompt + "Unable to create move and remain file", e);
+        }
+
+
+    }
+
+    public void afterMoveData(){
+        File moveFile = new File(getfileName() + MOVE_SUFFIX);
+        File remainFile = new File(getfileName() + REMAIN_SUFFIX);
+
+        if (moveFile.delete()){
+            logger.debug("Move file deleted");
+        }
+        else {
+            logger.error("Unable to delete the move file");
+        }
+
+        if (this.storageFile.delete()){
+            logger.debug("Original file deleted");
+        }
+        else {
+            logger.error("Unable to delete the original file");
+        }
+        if (remainFile.renameTo(new File(getfileName()))){
+            logger.debug("successfully rename the remain file");
+        }
+        else {
+            logger.error("Unable to rename the remain file");
+        }
+
+        
+
+
+
+    }
 
     private void openFile() {
         if (this.storageFile == null) {

@@ -5,6 +5,10 @@ import org.apache.log4j.BasicConfigurator;
 import org.junit.Test;
 import server.KVIterateStore;
 
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 public class PersistentStoreTest extends TestCase {
     private KVIterateStore storeFile;
     private Exception ex;
@@ -15,7 +19,6 @@ public class PersistentStoreTest extends TestCase {
         ex = null;
         storeFile = new KVIterateStore();
     }
-
 
     @Test
     public void testPutGet() throws Exception {
@@ -117,6 +120,56 @@ public class PersistentStoreTest extends TestCase {
         value = storeFile.get("large");
         assertTrue(value.equals("small"));
 
+
+    }
+
+    @Test
+    public void testPreSend() {
+        MessageDigest md = null;
+        try {
+            md = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+
+
+        //generate a hash range
+        md.reset();
+        md.update(("Hello").getBytes());
+        BigInteger val = new BigInteger(1, md.digest());
+        String lower = val.toString(16);
+
+        md.update(("World").getBytes());
+        val = new BigInteger(1, md.digest());
+        String upper = val.toString(16);
+
+        String[] hashRange = new String[2];
+        hashRange[0] = lower;
+        hashRange[1] = upper;
+        storeFile.preMoveData(hashRange);
+
+        try {
+            String value = storeFile.get("k99");
+            assertTrue(value.equals("v99"));
+            assertTrue(storeFile.inStorage("k99"));
+        } catch (Exception e) {
+            ex = e;
+        }
+
+
+    }
+
+    @Test
+    public void testAfterSend(){
+        storeFile.afterMoveData();
+
+        try {
+            String value = storeFile.get("k94");
+            assertTrue(value.equals("cv94"));
+            assertTrue(storeFile.inStorage("k94"));
+        } catch (Exception e) {
+            ex = e;
+        }
 
     }
 

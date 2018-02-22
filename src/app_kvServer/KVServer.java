@@ -15,10 +15,7 @@ import org.apache.zookeeper.data.Stat;
 import server.*;
 import server.cache.KVCache;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
@@ -251,6 +248,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     zk.delete(path, zk.exists(path, false).getVersion());
                     logger.info("Server initiated");
                 case SHUT_DOWN:
+                    zk.delete(path, zk.exists(path, false).getVersion());
+                    logger.info("Server shutdown");
+                    // terminate server
+                    System.exit(0);
                     break;
                 case LOCK_WRITE:
                     break;
@@ -499,29 +500,65 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public boolean moveData(String[] hashRange, String targetName) throws Exception {
-        // Don't want to get ip and host from target name
+        // Don't want to get ip and port from target name
         return false;
+    }
+
+
+    public void updateTransferProgress(int transferProgress){
+        try {
+            byte[] rawSenderMetaData = zk.getData(zkPath, false, null);
+            String senderMetaDataString = new String(rawSenderMetaData);
+            ServerMetaData senderMetaData = new Gson().fromJson(senderMetaDataString, ServerMetaData.class);
+            senderMetaData.setTransferProgress(transferProgress);
+
+            rawSenderMetaData = new Gson().toJson(senderMetaData).getBytes();
+            zk.setData(zkPath, rawSenderMetaData,
+                    zk.exists(zkPath, false).getVersion());
+
+        } catch (InterruptedException | KeeperException e) {
+            logger.error("Unable to update progress");
+            e.printStackTrace();
+        }
+
     }
 
     public boolean sendData(String[] hashRange, String targetHost, int targetPort) {
         try {
             this.lockWrite();
 
-            // TODO: move in range kv pairs into a new file
+            ((KVIterateStore)this.store).preMoveData(hashRange);
+
+            String moveFileName = this.store.getfileName() + KVIterateStore.MOVE_SUFFIX;
+            File moveFile = new File(moveFileName);
+            long fileLength = moveFile.length();
 
             byte[] buffer = new byte[BUFFER_SIZE];
             Socket clientSocket = new Socket(targetHost, targetPort);
             BufferedOutputStream out = new BufferedOutputStream(clientSocket.getOutputStream());
-            BufferedInputStream in = new BufferedInputStream(new FileInputStream(this.store.getfileName()));
+            BufferedInputStream in = new BufferedInputStream(new FileInputStream(moveFile));
 
-            int len = 0;
+            long totalLength = 0;
+            int len;
+
             while ((len = in.read(buffer)) > 0) {
                 out.write(buffer, 0, len);
+                totalLength += len;
+
+                // update percentage
+                int progress = (int) ((float) totalLength / (float) fileLength * 100.0);
+                // write into zookeeper
+                updateTransferProgress(progress);
+
             }
+
             in.close();
             out.flush();
             out.close();
             clientSocket.close();
+
+            ((KVIterateStore)this.store).afterMoveData();
+
             this.unlockWrite();
 
             logger.info("Finish transferring data");
@@ -533,7 +570,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             this.unlockWrite();
             return false;
         }
-
 
     }
 
