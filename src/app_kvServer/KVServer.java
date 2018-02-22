@@ -261,21 +261,21 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 case RECEIVE:
                     int receivePort = this.receiveData();
 
-                    // set receive port in server node
+                    // set receive port in server node and update progress
                     byte[] rawMetaData = zk.getData(zkPath, false, null);
                     String metaDataString = new String(rawMetaData);
                     ServerMetaData metaData = new Gson().fromJson(metaDataString, ServerMetaData.class);
                     metaData.setReceivePort(receivePort);
                     metaData.setTransferProgress(0);
 
-                    byte[] updateRawMetaData = new Gson().toJson(metaData).getBytes();
-                    zk.setData(zkPath, updateRawMetaData.,
+                    rawMetaData = new Gson().toJson(metaData).getBytes();
+                    zk.setData(zkPath, rawMetaData,
                             zk.exists(zkPath, false).getVersion());
 
                     // delete the message node
                     zk.delete(path, zk.exists(path, false).getVersion());
 
-                    logger.info("Waiting for data transfer on port " + receivePort);
+                    logger.info("Waiting for data transfer on port " + receivePort + " " + zkPath);
                     break;
 
                 case SEND:
@@ -294,11 +294,15 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     ServerMetaData senderMetaData = new Gson().fromJson(senderMetaDataString, ServerMetaData.class);
                     senderMetaData.setTransferProgress(0);
 
-                    byte[] updateRawSenderMetaData = new Gson().toJson(senderMetaData).getBytes();
-                    zk.setData(zkPath, updateRawSenderMetaData.,
+                    rawSenderMetaData = new Gson().toJson(senderMetaData).getBytes();
+                    zk.setData(zkPath, rawSenderMetaData,
                             zk.exists(zkPath, false).getVersion());
 
+                    // delete the message node
                     zk.delete(path, zk.exists(path, false).getVersion());
+                    logger.info("Server" + zkPath + "start sending....");
+
+                    // send data
                     sendData(message.getHashRange(), message.getReceiverHost(), receiverPort);
 
                     break;
@@ -504,7 +508,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             this.lockWrite();
 
             // TODO: move in range kv pairs into a new file
-
 
             byte[] buffer = new byte[BUFFER_SIZE];
             Socket clientSocket = new Socket(targetHost, targetPort);
