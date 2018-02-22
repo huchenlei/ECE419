@@ -247,6 +247,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 case INIT:
                     zk.delete(path, zk.exists(path, false).getVersion());
                     logger.info("Server initiated");
+                    break;
                 case SHUT_DOWN:
                     zk.delete(path, zk.exists(path, false).getVersion());
                     logger.info("Server shutdown");
