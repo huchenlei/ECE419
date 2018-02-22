@@ -3,6 +3,7 @@ package ecs;
 import common.messages.KVAdminMessage;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
+import org.apache.zookeeper.data.Stat;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -39,7 +40,11 @@ public class ECSMulticaster implements Watcher {
             try {
                 zk.create(msgPath, msg.encode().getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-                zk.exists(msgPath, this);
+                Stat exists = zk.exists(msgPath, this);
+                if (exists == null) {
+                    sig.countDown();
+                    logger.debug("Receive node deletion, message received");
+                }
             } catch (KeeperException e) {
                 errors.put(n, "issue encountered create msg node " + msgPath +
                         "\n" + e.getMessage() + "\n" + Arrays.toString(e.getStackTrace()));
