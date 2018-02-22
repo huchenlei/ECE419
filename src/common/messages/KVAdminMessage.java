@@ -21,9 +21,9 @@ public class KVAdminMessage implements Encodable, Decodable {
         this.operationType = operationType;
     }
 
-    private String receiverName;
-    private String receiverHost;
-    private String[] hashRange;
+    private String receiverName = null;
+    private String receiverHost = null;
+    private String[] hashRange = null;
 
 
     @Override
@@ -56,6 +56,15 @@ public class KVAdminMessage implements Encodable, Decodable {
         return hashRange;
     }
 
+    public void setReceiverName(String receiverName) {
+        this.receiverName = receiverName;
+    }
 
+    public void setReceiverHost(String receiverHost) {
+        this.receiverHost = receiverHost;
+    }
 
+    public void setHashRange(String[] hashRange) {
+        this.hashRange = hashRange;
+    }
 }

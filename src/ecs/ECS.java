@@ -112,6 +112,9 @@ public class ECS implements IECSClient {
                 toStart.add(n);
             }
         }
+
+        rearrangeDataStorage(toStart);
+
         ECSMulticaster multicaster = new ECSMulticaster(zk, toStart);
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.START));
 
@@ -135,6 +138,7 @@ public class ECS implements IECSClient {
                 toStop.add(n);
             }
         }
+
         ECSMulticaster multicaster = new ECSMulticaster(zk, toStop);
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.STOP));
 
@@ -156,7 +160,10 @@ public class ECS implements IECSClient {
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.STOP));
         if (ret) {
             hashRing.removeAll();
-            // TODO update node status
+            nodeTable.values()
+                    .forEach(n -> ((ECSNode)n).setStatus(ECSNode.ServerStatus.OFFLINE));
+            nodePool.addAll(nodeTable.values());
+            nodeTable.clear();
             ret = updateMetadata();
         }
         return ret;
@@ -292,6 +299,10 @@ public class ECS implements IECSClient {
                 .filter(n -> nodeNames.contains(n.getNodeName()))
                 .collect(Collectors.toList());
 
+        rearrangeDataStorage(toRemove.stream()
+                .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
+                .collect(Collectors.toList()));
+
         ECSMulticaster multicaster = new ECSMulticaster(zk, toRemove);
         boolean ret;
         try {
@@ -406,7 +417,49 @@ public class ECS implements IECSClient {
         }
     }
 
-    private void transferData(ECSNode from, ECSNode to, String[] hashRange) {
+    private boolean transferData(ECSNode from, ECSNode to, String[] hashRange) {
+        assert from != null;
+        assert to != null;
+        assert hashRange != null;
+        assert hashRange.length == 2;
+        try {
+            ECSMulticaster multicaster = new ECSMulticaster(zk, Collections.singletonList(to));
+            boolean ack = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.RECEIVE));
 
+            if (!ack) {
+                logger.error("Failed to ack receiver of data " + to);
+                logger.error("hash range is " + hashRange[0] + " to " + hashRange[1]);
+                return false;
+            }
+
+            logger.info("Confirmed receiver node " + to);
+
+            multicaster = new ECSMulticaster(zk, Collections.singletonList(from));
+            KVAdminMessage message = new KVAdminMessage(KVAdminMessage.OperationType.SEND);
+            message.setReceiverHost(to.getNodeHost());
+            message.setReceiverName(to.getNodeName());
+            message.setHashRange(hashRange);
+
+            ack = multicaster.send(message);
+
+            if (!ack) {
+                logger.error("Failed to ack sender of data " + from);
+                logger.error("hash range is " + hashRange[0] + " to " + hashRange[1]);
+                return false;
+            }
+
+            logger.info("Confirmed sender node " + from);
+
+            // Start listening sender's progress
+            ack = new ECSTransferListener(zk, from, to).start();
+            if (!ack) {
+                logger.error("Failed in data transferring");
+                return false;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 }
