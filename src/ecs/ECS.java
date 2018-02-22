@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -356,10 +357,56 @@ public class ECS implements IECSClient {
     }
 
     private boolean rearrangeDataStorage(Collection<ECSNode> nodes) {
-        return false;
+        Set<ECSNode> removeSet = nodes.stream()
+                .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
+                .collect(Collectors.toSet());
+        Set<ECSNode> newSet = nodes.stream()
+                .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.STOP))
+                .collect(Collectors.toSet());
+
+        for (ECSNode node : nodes) {
+            if (node.getStatus().equals(ECSNode.ServerStatus.ACTIVE)) {
+                // active server in storage will be stopped
+                // Its data transferring to "next" server available
+                ECSNode dest = findNextNodeAvailable(node, n -> !removeSet.contains(n));
+                if (dest != null) {
+                    transferData(node, dest, node.getNodeHashRange());
+                } else {
+                    logger.warn("No server available to accept data from the deletion of node " + node);
+                    logger.warn("The node is the last node active, service down...");
+                }
+            } else if (node.getStatus().equals(ECSNode.ServerStatus.STOP)) {
+                // Stopped server will be activated
+                // Its next server will transfer data to it
+                ECSNode source = findNextNodeAvailable(node, n -> !newSet.contains(n));
+                if (source != null) {
+                    transferData(source, node, node.getNodeHashRange());
+                } else {
+                    logger.warn("No server exist yet. No data to transfer to node " + node);
+                }
+            } else {
+                // Report error
+                logger.error("Invalid node status for data rearrangement " + node);
+            }
+        }
+        return true;
+    }
+
+    private ECSNode findNextNodeAvailable(ECSNode node, Predicate<ECSNode> condition) {
+        ECSNode dest = node;
+        while (true) {
+            // Get next node on HashRing
+            dest = hashRing.getNodeByKey(dest.getNodeHash() + 1);
+            if (condition.test(dest))
+                return dest;
+            if (dest.equals(node)) {
+                // HashRing exhausted
+                return null;
+            }
+        }
     }
 
     private void transferData(ECSNode from, ECSNode to, String[] hashRange) {
-
+        // TODO multi-thread this function
     }
 }

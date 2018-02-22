@@ -9,7 +9,6 @@ import org.apache.log4j.Level;
 import org.junit.Before;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 
 public class ECSTest extends TestCase {
@@ -60,12 +59,13 @@ public class ECSTest extends TestCase {
         nodes = ecs.addNodes(BIG_SERVER_NUM, CACHE_STRATEGY, CACHE_SIZE);
         assertNull(nodes);
     }*/
-
     public void testAddNodes() throws Exception {
-        Integer count = 3;
         Collection<IECSNode> nodes =
-                ecs.setupNodes(count, CACHE_STRATEGY, CACHE_SIZE);
+                ecs.setupNodes(BIG_SERVER_NUM, CACHE_STRATEGY, CACHE_SIZE);
+        assertNull(nodes);
 
+        Integer count = 3;
+        nodes = ecs.setupNodes(count, CACHE_STRATEGY, CACHE_SIZE);
         assertNotNull(nodes);
         assertEquals(count, new Integer(nodes.size()));
 
@@ -79,4 +79,6 @@ public class ECSTest extends TestCase {
         boolean ret = ecs.awaitNodes(count, ECS.ZK_TIMEOUT);
         assertTrue(ret);
     }
+
+
 }
