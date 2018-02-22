@@ -134,12 +134,25 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             this.cacheSize = json.getCacheSize();
             this.strategy = CacheStrategy.valueOf(json.getCacheStrategy());
 
+            //remove the init message if have
+            List<String> children = zk.getChildren(zkPath, false, null);
+            if (!children.isEmpty()){
+                byte[] data = zk.getData(zkPath + "/message", false, null);
+                KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
+                if (message.getOperationType().equals(KVAdminMessage.OperationType.INIT)){
+                    zk.delete(zkPath + "/message",
+                            zk.exists(zkPath + "/message", false).getVersion());
+                    logger.info("Server initiated");
+                }
+            }
+
             if (this.strategy == CacheStrategy.None) {
                 this.cache = null;
             } else {
                 // Use reflection to dynamically initialize the cache based on strategy name
                 try {
-                    Constructor<?> cons = Class.forName("server.cache.KV" + strategy + "Cache").getConstructor(Integer.class);
+                    Constructor<?> cons = Class.forName("server.cache.KV" + strategy
+                            + "Cache").getConstructor(Integer.class);
                     this.cache = (KVCache) cons.newInstance(cacheSize);
                 } catch (ClassNotFoundException |
                         NoSuchMethodException |
@@ -173,12 +186,16 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 return;
             }
 
-            String path = zkPath + "message";
+            String path = zkPath + "/message";
 
             // handling event, assume there is only one message named "message"
-            byte[] data = zk.getData(zkPath + "message", false, null);
+            byte[] data = zk.getData(path, false, null);
             KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
             switch (message.getOperationType()) {
+                case INIT:
+                    zk.delete(path,
+                            zk.exists(path, false).getVersion());
+                    logger.info("Server initiated");
                 case SHUT_DOWN:
                     break;
                 case LOCK_WRITE:
