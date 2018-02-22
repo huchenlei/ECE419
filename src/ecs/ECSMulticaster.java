@@ -77,6 +77,7 @@ public class ECSMulticaster implements Watcher {
         switch (event.getType()) {
             case NodeDeleted:
                 // The message is received and properly handled by the server
+                logger.debug("Receive node deletion, message received");
                 break;
             case NodeDataChanged:
                 try {

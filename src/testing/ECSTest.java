@@ -9,6 +9,7 @@ import org.apache.log4j.Level;
 import org.junit.Before;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 
 public class ECSTest extends TestCase {
@@ -40,16 +41,6 @@ public class ECSTest extends TestCase {
             ex = e;
         }
         assertNotNull(ex);
-    }
-
-    public void testSetUpNodes() {
-        Collection<IECSNode> nodes =
-                ecs.setupNodes(1, CACHE_STRATEGY, CACHE_SIZE);
-        assertNotNull(nodes);
-        assertEquals(1, nodes.size());
-
-        nodes = ecs.setupNodes(BIG_SERVER_NUM, CACHE_STRATEGY, CACHE_SIZE);
-        assertNull(nodes);
     }
 
     /**

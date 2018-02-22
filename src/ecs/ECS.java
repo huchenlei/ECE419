@@ -267,6 +267,7 @@ public class ECS implements IECSClient {
             nodeTable.put(n.getNodeName(), n);
         }
 
+        assert nodeList.size() == count;
         return nodeList;
     }
 
