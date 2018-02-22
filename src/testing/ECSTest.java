@@ -79,6 +79,4 @@ public class ECSTest extends TestCase {
         boolean ret = ecs.awaitNodes(count, ECS.ZK_TIMEOUT);
         assertTrue(ret);
     }
-
-
 }

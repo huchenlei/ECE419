@@ -101,6 +101,8 @@ public class ECS implements IECSClient {
             // Should never happen
             e.printStackTrace();
         }
+
+        updateMetadata();
     }
 
     @Override
@@ -367,6 +369,16 @@ public class ECS implements IECSClient {
         return true;
     }
 
+    /**
+     * for nodes that are ACTIVE:
+     * data are transferred from them to nearest valid node
+     *
+     * for nodes that are STOP:
+     * data are transferred to them from nearest valid node
+     *
+     * @param nodes ECSNodes
+     * @return successful or not
+     */
     private boolean rearrangeDataStorage(Collection<ECSNode> nodes) {
         Set<ECSNode> removeSet = nodes.stream()
                 .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))

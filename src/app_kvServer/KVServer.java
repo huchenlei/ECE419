@@ -178,7 +178,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     try {
                         byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, this, null);
                         hashRingString = new String(hashRingData);
-//                        hashRing = new ECSHashRing(hashRingString);
+                        hashRing = new ECSHashRing(hashRingString);
                         logger.info("Hash Ring updated");
                     } catch (KeeperException | InterruptedException e) {
                         logger.info("Unable to update the metadata node");
@@ -188,7 +188,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             }, null);
             logger.debug("Hash ring found");
             hashRingString = new String(hashRingData);
-//            hashRing = new ECSHashRing(hashRingString);
+            hashRing = new ECSHashRing(hashRingString);
 
 
         } catch (InterruptedException | KeeperException e) {
