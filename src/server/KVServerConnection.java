@@ -6,6 +6,8 @@ import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
 import common.messages.KVMessage;
 import common.messages.TextMessage;
+import ecs.ECSHashRing;
+import ecs.ECSNode;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -75,6 +77,16 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         switch (m.getStatus()) {
             case GET: {
                 // TODO: check if key in responsible range
+                ECSHashRing hashRing = ((KVServer)kvServer).getHashRing();
+                ECSNode node = hashRing.getNodeByKey(m.getKey());
+                if (node != null) {
+                    if (!node.getNodeName().equals(((KVServer)kvServer).getServerName())) {
+                        res.setValue(((KVServer)kvServer).getHashRingString());
+                        res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
+                        return res;
+                    }
+                }
+
 
                 Exception ex = null;
                 String value = null;

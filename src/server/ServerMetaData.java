@@ -15,6 +15,7 @@ public class ServerMetaData {
         this.cacheStrategy = cacheStrategy;
         this.cacheSize = cacheSize;
         this.receivePort = 0;
+        this.transferProgress = 100;
     }
 
     public Integer getReceivePort() {

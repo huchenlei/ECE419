@@ -21,9 +21,10 @@ public class KVAdminMessage implements Encodable, Decodable {
         this.operationType = operationType;
     }
 
-    private Integer receiverPort;
+    private String receiverName;
     private String receiverHost;
     private String[] hashRange;
+
 
     @Override
     public String encode() {
@@ -34,7 +35,7 @@ public class KVAdminMessage implements Encodable, Decodable {
     public void decode(String data) {
         KVAdminMessage msg = new Gson().fromJson(data, this.getClass());
         this.operationType = msg.operationType;
-        this.receiverPort = msg.receiverPort;
+        this.receiverName = msg.receiverName;
         this.hashRange = msg.hashRange;
         this.receiverHost = msg.receiverHost;
     }
@@ -43,8 +44,8 @@ public class KVAdminMessage implements Encodable, Decodable {
         return operationType;
     }
 
-    public Integer getReceiverPort() {
-        return receiverPort;
+    public String getReceiverName() {
+        return receiverName;
     }
 
     public String getReceiverHost() {
@@ -54,5 +55,7 @@ public class KVAdminMessage implements Encodable, Decodable {
     public String[] getHashRange() {
         return hashRange;
     }
+
+
 
 }

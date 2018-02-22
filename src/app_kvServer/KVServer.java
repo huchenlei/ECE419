@@ -3,29 +3,32 @@ package app_kvServer;
 import com.google.gson.Gson;
 import common.messages.KVAdminMessage;
 import ecs.ECS;
+import ecs.ECSHashRing;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.*;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 import server.*;
 import server.cache.KVCache;
-import server.cache.KVFIFOCache;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 
 public class KVServer implements IKVServer, Runnable, Watcher {
-
 
 
     public static final Integer MAX_KEY = 20;
@@ -51,13 +54,23 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     private ZooKeeper zk;
     private String zkPath;
 
+    /* metadata */
+    private ECSHashRing hashRing;
+    private String hashRingString;
+
     /**
      * cache would be null if strategy is set to None
      */
     private KVCache cache;
     private KVPersistentStore store;
 
+
+    public String getHashRingString() {
+        return hashRingString;
+    }
+
     /**
+
      * Start KV Server at given port
      *
      * @param port      given port for storage server to operate
@@ -99,6 +112,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         this.zkHostName = zkHostName;
         this.serverName = name;
         this.zkPort = zkPort;
+        this.status = ServerStatus.STOP;
         zkPath = ECS.ZK_SERVER_ROOT + "/" + name;
         String connectString = this.zkHostName + ":" + Integer.toString(this.zkPort);
         try {
@@ -118,6 +132,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 // Should never happen
                 e.printStackTrace();
             }
+
+        } catch (IOException e) {
+            logger.error("Unable to connect to zookeeper");
+            e.printStackTrace();
+        }
+
+        try {
             // the node should be created before init the server
             Stat stat = zk.exists(zkPath, false);
 
@@ -128,6 +149,14 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             this.cacheSize = json.getCacheSize();
             this.strategy = CacheStrategy.valueOf(json.getCacheStrategy());
 
+        } catch (InterruptedException | KeeperException e) {
+            logger.error("Unable to retrieve cache info from " + zkPath);
+            this.strategy = CacheStrategy.FIFO;
+            this.cacheSize = 100;
+            e.printStackTrace();
+        }
+
+        try {
             //remove the init message if have
             List<String> children = zk.getChildren(zkPath, false, null);
             if (!children.isEmpty()){
@@ -136,36 +165,68 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
                 if (message.getOperationType().equals(KVAdminMessage.OperationType.INIT)){
                     zk.delete(messagePath, zk.exists(messagePath, false).getVersion());
-                    logger.info("Server initiated");
+                    logger.info("Server initiated at constructor");
                 }
             }
-
-            if (this.strategy == CacheStrategy.None) {
-                this.cache = null;
-            } else {
-                // Use reflection to dynamically initialize the cache based on strategy name
-                try {
-                    Constructor<?> cons = Class.forName("server.cache.KV" + strategy
-                            + "Cache").getConstructor(Integer.class);
-                    this.cache = (KVCache) cons.newInstance(cacheSize);
-                } catch (ClassNotFoundException |
-                        NoSuchMethodException |
-                        IllegalAccessException |
-                        InstantiationException |
-                        InvocationTargetException e) {
-                    logger.fatal("Component of KVServer is not found, please check the integrity of jar package");
-                    e.printStackTrace();
-                }
-            }
-            this.store = new KVIterateStore(name + "_iterateDataBase");
-
-            // set watcher on childrens
-            zk.getChildren(this.zkPath, this, null);
-
-        } catch (IOException | InterruptedException | KeeperException e) {
-            logger.error("Unable to connect to zookeeper");
+        } catch (InterruptedException | KeeperException e) {
+            logger.error("Unable to get child nodes");
             e.printStackTrace();
         }
+
+        try {
+            // setup hashRing info
+            byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, new Watcher() {
+                // handle hashRing update
+                public void process(WatchedEvent we) {
+                    try {
+                        byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, this, null);
+                        hashRingString = new String(hashRingData);
+//                        hashRing = new ECSHashRing(hashRingString);
+                        logger.info("Hash Ring updated");
+                    } catch (KeeperException | InterruptedException e) {
+                        logger.info("Unable to update the metadata node");
+                        e.printStackTrace();
+                    }
+                }
+            }, null);
+            logger.debug("Hash ring found");
+            hashRingString = new String(hashRingData);
+//            hashRing = new ECSHashRing(hashRingString);
+
+
+        } catch (InterruptedException | KeeperException e) {
+            logger.error("Unable to get metadata info");
+            e.printStackTrace();
+        }
+
+        if (this.strategy == CacheStrategy.None) {
+            this.cache = null;
+        } else {
+            // Use reflection to dynamically initialize the cache based on strategy name
+            try {
+                Constructor<?> cons = Class.forName("server.cache.KV" + strategy
+                        + "Cache").getConstructor(Integer.class);
+                this.cache = (KVCache) cons.newInstance(cacheSize);
+            } catch (ClassNotFoundException |
+                    NoSuchMethodException |
+                    IllegalAccessException |
+                    InstantiationException |
+                    InvocationTargetException e) {
+                logger.fatal("Component of KVServer is not found, please check the integrity of jar package");
+                e.printStackTrace();
+            }
+        }
+
+        this.store = new KVIterateStore(name + "_iterateDataBase");
+
+        try {
+            // set watcher on childrens
+            zk.getChildren(this.zkPath, this, null);
+        } catch (InterruptedException | KeeperException e) {
+            logger.error("Unable to get set watcher on children");
+            e.printStackTrace();
+        }
+
 
     }
 
@@ -187,8 +248,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
             switch (message.getOperationType()) {
                 case INIT:
-                    zk.delete(path,
-                            zk.exists(path, false).getVersion());
+                    zk.delete(path, zk.exists(path, false).getVersion());
                     logger.info("Server initiated");
                 case SHUT_DOWN:
                     break;
@@ -200,16 +260,47 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     break;
                 case RECEIVE:
                     int receivePort = this.receiveData();
-                    // simply write a integer in it
-                    zk.setData(path, Integer.toString(receivePort).getBytes(),
-                            zk.exists(path, false).getVersion());
+
+                    // set receive port in server node
+                    byte[] rawMetaData = zk.getData(zkPath, false, null);
+                    String metaDataString = new String(rawMetaData);
+                    ServerMetaData metaData = new Gson().fromJson(metaDataString, ServerMetaData.class);
+                    metaData.setReceivePort(receivePort);
+                    metaData.setTransferProgress(0);
+
+                    byte[] updateRawMetaData = new Gson().toJson(metaData).getBytes();
+                    zk.setData(zkPath, updateRawMetaData.,
+                            zk.exists(zkPath, false).getVersion());
+
+                    // delete the message node
+                    zk.delete(path, zk.exists(path, false).getVersion());
+
                     logger.info("Waiting for data transfer on port " + receivePort);
                     break;
 
                 case SEND:
-                    // TODO: think about it
-                    sendData(message.getHashRange(), message.getReceiverHost(), message.getReceiverPort());
+                    String receiverName = message.getReceiverName();
+
+                    // read receiver's node to get port
+                    byte[] rawReceiverMetaData = zk.getData(ECS.ZK_SERVER_ROOT + "/" + receiverName,
+                            false, null);
+                    String receiverMetaDataString = new String(rawReceiverMetaData);
+                    ServerMetaData receiverMetaData = new Gson().fromJson(receiverMetaDataString, ServerMetaData.class);
+                    Integer receiverPort = receiverMetaData.getReceivePort();
+
+                    // update its progress
+                    byte[] rawSenderMetaData = zk.getData(zkPath, false, null);
+                    String senderMetaDataString = new String(rawSenderMetaData);
+                    ServerMetaData senderMetaData = new Gson().fromJson(senderMetaDataString, ServerMetaData.class);
+                    senderMetaData.setTransferProgress(0);
+
+                    byte[] updateRawSenderMetaData = new Gson().toJson(senderMetaData).getBytes();
+                    zk.setData(zkPath, updateRawSenderMetaData.,
+                            zk.exists(zkPath, false).getVersion());
+
                     zk.delete(path, zk.exists(path, false).getVersion());
+                    sendData(message.getHashRange(), message.getReceiverHost(), receiverPort);
+
                     break;
 
                 case START:
@@ -270,6 +361,14 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         return port;
     }
 
+    public ECSHashRing getHashRing() {
+        return hashRing;
+    }
+
+    public String getServerName() {
+        return serverName;
+    }
+
     @Override
     public String getHostname() {
         if (serverSocket == null) {
@@ -288,6 +387,8 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     public int getCacheSize() {
         return cacheSize;
     }
+
+
 
     @Override
     public boolean inStorage(String key) {

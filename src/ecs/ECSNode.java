@@ -50,7 +50,7 @@ public class ECSNode implements IECSNode {
     public ECSNode(String name, String host, Integer port) {
         this.name = name;
         this.host = host;
-        this.port = port;
+        this.port = port ;
         this.status = ServerStatus.OFFLINE;
     }
 
@@ -130,5 +130,30 @@ public class ECSNode implements IECSNode {
                     this.prev.getNodeHash(),
                     this.getNodeHash()
             };
+    }
+
+
+
+    public static boolean isKeyInRange(String key, String[] hexRange){
+        md.reset();
+        md.update((key).getBytes());
+        BigInteger val = new BigInteger(1, md.digest());
+        String keyHash = val.toString(16);
+        BigInteger lower = new BigInteger(hexRange[0], 16);
+        BigInteger upper = new BigInteger(hexRange[1], 16);
+        BigInteger k = new BigInteger(keyHash, 16);
+
+        if (upper.compareTo(lower) <= 0) {
+            // The node is responsible for ring end
+            if (k.compareTo(upper) <= 0 || k.compareTo(lower) > 0) {
+                return true;
+            }
+        } else {
+            if (k.compareTo(upper) <= 0 && k.compareTo(lower) > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
