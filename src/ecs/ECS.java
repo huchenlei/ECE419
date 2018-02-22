@@ -119,6 +119,8 @@ public class ECS implements IECSClient {
                 hashRing.addNode(n);
             }
         }
+        toStart.forEach(n -> n.setStatus(ECSNode.ServerStatus.ACTIVE));
+
         updateMetadata();
         return ret;
     }
@@ -140,6 +142,8 @@ public class ECS implements IECSClient {
                 hashRing.removeNode(n);
             }
         }
+        toStop.forEach(n -> n.setStatus(ECSNode.ServerStatus.STOP));
+
         updateMetadata();
         return ret;
     }
@@ -151,6 +155,7 @@ public class ECS implements IECSClient {
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.STOP));
         if (ret) {
             hashRing.removeAll();
+            // TODO update node status
             ret = updateMetadata();
         }
         return ret;
@@ -163,6 +168,7 @@ public class ECS implements IECSClient {
     @Override
     public IECSNode addNode(String cacheStrategy, int cacheSize) {
         Collection<IECSNode> nodes = addNodes(1, cacheStrategy, cacheSize);
+        if (nodes == null) return null;
         assert nodes.size() <= 1;
         return nodes.size() == 1 ? (IECSNode) nodes.toArray()[0] : null;
     }
@@ -244,12 +250,19 @@ public class ECS implements IECSClient {
 
             for (IECSNode n : nodeList) {
                 Stat exists = zk.exists(getNodePath(n), false);
-                if (exists == null)
+                if (exists == null) {
                     zk.create(getNodePath(n), metadata,
                             ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-                else
+                } else {
                     zk.setData(getNodePath(n), metadata, exists.getVersion());
-
+                    // Delete all children (msg z-nodes)
+                    List<String> children = zk.getChildren(getNodePath(n), false);
+                    for (String zn : children) {
+                        String msgPath = getNodePath(n) + "/" + zn;
+                        Stat ex = zk.exists(msgPath, false);
+                        zk.delete(msgPath, ex.getVersion());
+                    }
+                }
             }
         } catch (InterruptedException | KeeperException e) {
             logger.error("Issue encountered with ZooKeeper server");
@@ -339,5 +352,13 @@ public class ECS implements IECSClient {
             return false;
         }
         return true;
+    }
+
+    private boolean rearrangeDataStorage(Collection<ECSNode> nodes) {
+        return false;
+    }
+
+    private void transferData(ECSNode from, ECSNode to, String[] hashRange) {
+
     }
 }

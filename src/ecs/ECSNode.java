@@ -1,6 +1,5 @@
 package ecs;
 
-import app_kvServer.KVServer;
 import org.apache.log4j.Logger;
 
 import java.math.BigInteger;
