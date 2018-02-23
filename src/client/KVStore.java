@@ -57,15 +57,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         req.setStatus(KVMessage.StatusType.PUT);
         sendMessage(new TextMessage(req.encode()));
         res.decode(receiveMessage().getMsg());
-        //if res is NOT_RESPONSIBLE, the message should include new metadata, retry the request
-        if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
-            hashRingString = res.getValue();
-            hashRing = new ECSHashRing(hashRingString);
-            String hash = ECSNode.calcHash(key);
-            this.address = hashRing.getNodeByKey(hash).getNodeHost();
-            this.port = hashRing.getNodeByKey(hash).getNodePort();
-            return this.resendRequest(key, value, req.getStatus());
-        }
+        res = handleNotResponsible(req, res);
         return res;
     }
 
@@ -80,14 +72,25 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         req.setStatus(KVMessage.StatusType.GET);
         sendMessage(new TextMessage(req.encode()));
         res.decode(receiveMessage().getMsg());
-        //if res is NOT_RESPONSIBLE, the message should include new metadata, retry the request
+        res = handleNotResponsible(req, res);
+        return res;
+    }
+
+    private KVMessage handleNotResponsible(KVMessage req, KVMessage res) throws Exception {
         if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
             hashRingString = res.getValue();
             hashRing = new ECSHashRing(hashRingString);
-            String hash = ECSNode.calcHash(key);
+            String hash = ECSNode.calcHash(res.getKey());
             this.address = hashRing.getNodeByKey(hash).getNodeHost();
             this.port = hashRing.getNodeByKey(hash).getNodePort();
-            return this.resendRequest(key, null, req.getStatus());
+            if (req.getStatus().equals(KVMessage.StatusType.GET)) {
+                return resendRequest(req.getKey(), null, req.getStatus());
+            } else if (req.getStatus().equals(KVMessage.StatusType.PUT)){
+                return resendRequest(req.getKey(), req.getValue(), req.getStatus());
+            } else {
+                logger.fatal("Unexpected status type " + req.getStatus());
+                return null;
+            }
         }
         return res;
     }
