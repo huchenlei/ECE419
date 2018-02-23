@@ -35,4 +35,8 @@ public class JsonKVMessage extends AbstractKVMessage {
         this.value = json.value;
         this.status = json.status;
     }
+
+    public JsonKVMessage(String key, String value, String status) {
+        super(key, value, status);
+    }
 }

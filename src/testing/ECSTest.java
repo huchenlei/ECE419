@@ -40,6 +40,10 @@ public class ECSTest extends TestCase {
         ex = null;
     }
 
+    /*
+    Following are the basic functionality test for ECS
+    No client data interaction is included
+     */
     public void test01Creation() throws IOException {
         ecs = new ECS("./ecs.config");
         new ECS("./test_instances/ecs_dup_name.config");
@@ -129,5 +133,13 @@ public class ECSTest extends TestCase {
     public void test06Shutdown() throws Exception {
         boolean ret = ecs.shutdown();
         assertTrue(ret);
+    }
+
+    /*
+    Following are advanced testcases for ECS functionality
+    User actions (put/get) data is simulated to test the robustness of the system
+     */
+    public void test07() {
+
     }
 }
