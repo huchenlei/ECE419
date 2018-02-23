@@ -2,6 +2,7 @@ package ecs;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.apache.log4j.Logger;
 
 import java.math.BigInteger;
 import java.util.Collection;
@@ -12,6 +13,7 @@ import java.util.List;
  * for adding and removing nodes
  */
 public class ECSHashRing {
+    private Logger logger = Logger.getRootLogger();
     private ECSNode root = null;
 
     public ECSHashRing() {
@@ -67,6 +69,13 @@ public class ECSHashRing {
         return currentNode;
     }
 
+    private static final BigInteger BIG_ONE = new BigInteger("1", 16);
+    public ECSNode getNextNode(ECSNode n) {
+        BigInteger hash = new BigInteger(n.getNodeHash(), 16);
+        hash = hash.add(BIG_ONE);
+        return getNodeByKey(hash.toString(16));
+    }
+
     /**
      * Add an node to hash ring
      * Complexity O(n)
@@ -106,11 +115,13 @@ public class ECSHashRing {
     public void removeNode(String hash) {
         ECSNode toRemove = getNodeByKey(hash);
 
-        ECSNode next = getNodeByKey(hash + 1);
+        ECSNode next = getNextNode(toRemove);
 
-        if (toRemove.equals(next)
+        if ((toRemove.equals(next) && (!toRemove.equals(root)))
                 || !(next.getPrev().equals(toRemove))) {
-            throw new HashRingException("Invalid node hash value!");
+            logger.debug(this);
+            throw new HashRingException("Invalid node hash value! (" + hash + ")\nnext: "
+                    + next + "\nthis: " + toRemove + "\nnext->prev: " + next.getPrev());
         }
 
         next.setPrev(toRemove.getPrev());
@@ -133,6 +144,26 @@ public class ECSHashRing {
         }
 
         root = null;
+    }
+
+    @Override
+    public String toString() {
+        if (root == null)
+            return "ECSHashRing{}";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("ECSHashRing{\n");
+
+        ECSNode currentNode = root;
+        while (true) {
+            sb.append(currentNode);
+            sb.append("\n");
+            currentNode = currentNode.getPrev();
+            if (currentNode.equals(root))
+                break;
+        }
+        sb.append("}");
+        return sb.toString();
     }
 
     public class HashRingException extends RuntimeException {

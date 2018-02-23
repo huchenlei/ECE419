@@ -301,6 +301,10 @@ public class ECS implements IECSClient {
                 .filter(n -> nodeNames.contains(n.getNodeName()))
                 .collect(Collectors.toList());
 
+        logger.info("Remove following node from node table");
+        toRemove.forEach(logger::info);
+        logger.info("\n");
+
         rearrangeDataStorage(toRemove.stream()
                 .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
                 .collect(Collectors.toList()));
@@ -428,7 +432,7 @@ public class ECS implements IECSClient {
         ECSNode dest = node;
         while (true) {
             // Get next node on HashRing
-            dest = hashRing.getNodeByKey(dest.getNodeHash() + 1);
+            dest = hashRing.getNextNode(dest);
             if (condition.test(dest))
                 return dest;
             if (dest.equals(node)) {

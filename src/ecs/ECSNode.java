@@ -82,10 +82,11 @@ public class ECSNode extends RawECSNode implements IECSNode {
     @Override
     public String toString() {
         return "ECSNode{" +
-                "name='" + name + '\'' +
+                "hash='" + hash + '\'' +
+                ", status=" + status +
+                ", name='" + name + '\'' +
                 ", host='" + host + '\'' +
                 ", port=" + port +
-                ", hash='" + hash + '\'' +
                 '}';
     }
 

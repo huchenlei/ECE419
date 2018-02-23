@@ -2,19 +2,25 @@ package testing;
 
 import app_kvServer.KVServer;
 import ecs.ECS;
+import ecs.ECSNode;
 import ecs.IECSNode;
 import junit.framework.TestCase;
 import logger.LogSetup;
 import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ECSTest extends TestCase {
+    private static Logger logger = Logger.getRootLogger();
     private static final Integer BIG_SERVER_NUM = 1024 * 1024;
     private static final String CACHE_STRATEGY = "FIFO";
     private static final Integer CACHE_SIZE = 1024;
@@ -90,6 +96,12 @@ public class ECSTest extends TestCase {
         assertNotNull(ecs);
         boolean ret = ecs.start();
         assertTrue(ret);
+
+        Collection<IECSNode> nodes = ecs.getNodes().values();
+        for (IECSNode node : nodes) {
+            assertEquals(ECSNode.ServerStatus.ACTIVE,
+                    ((ECSNode) node).getStatus());
+        }
     }
 
     /**
@@ -98,6 +110,7 @@ public class ECSTest extends TestCase {
     public void test04RemoveNodes() {
         List<String> names = new ArrayList<>(ecs.getNodes().keySet());
         assertTrue(names.size() > 0);
+        logger.info("Removing " + names.get(0) + " node");
         boolean ret = ecs.removeNodes(Collections.singletonList(names.get(0)));
         assertTrue(ret);
     }
