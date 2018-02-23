@@ -19,7 +19,7 @@ import java.util.Collections;
 import java.util.List;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class ECSTest extends TestCase {
+public class ECSBasicTest extends TestCase {
     private static Logger logger = Logger.getRootLogger();
     private static final Integer BIG_SERVER_NUM = 1024 * 1024;
     private static final String CACHE_STRATEGY = "FIFO";
@@ -135,11 +135,4 @@ public class ECSTest extends TestCase {
         assertTrue(ret);
     }
 
-    /*
-    Following are advanced testcases for ECS functionality
-    User actions (put/get) data is simulated to test the robustness of the system
-     */
-    public void test07() {
-
-    }
 }

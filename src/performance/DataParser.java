@@ -1,5 +1,6 @@
 package performance;
 
+import app_kvServer.KVServer;
 import common.messages.JsonKVMessage;
 import common.messages.KVMessage;
 import org.apache.commons.io.FileUtils;
@@ -34,21 +35,28 @@ public class DataParser {
      */
     public static List<KVMessage> parseDataFrom(String dir) {
         Collection<File> files = FileUtils.listFiles(new File(DATA_ROOT + "/" + dir),
-                new RegexFileFilter("^(.*?)"),
+                new RegexFileFilter("^(\\d*?)\\."),
                 DirectoryFileFilter.DIRECTORY);
         ArrayList<KVMessage> result = new ArrayList<>();
         for (File file : files) {
+            if (file.getName().equals(".DS_Store")) continue;
             try {
                 StringBuilder val = new StringBuilder();
-                BufferedReader reader = new BufferedReader(new FileReader(file));
+                FileReader fileReader = new FileReader(file);
+                BufferedReader reader = new BufferedReader(fileReader);
                 String line;
                 while ((line = reader.readLine()) != null) {
                     val.append(line);
                 }
                 MessageDigest md = MessageDigest.getInstance("MD5");
                 md.update(val.toString().getBytes());
-                String key = new BigInteger(1, md.digest()).toString(16);
-                result.add(new JsonKVMessage(key, val.toString(), "PUT"));
+                String key = new String(md.digest()); // Not output hex string here because key need to be less than 20 bytes
+                if (val.toString().length() <= KVServer.MAX_VAL &&
+                        key.length() <= KVServer.MAX_KEY)
+                    result.add(new JsonKVMessage(key, val.toString(), "PUT"));
+
+                reader.close();
+                fileReader.close();
             } catch (FileNotFoundException e) {
                 logger.error(file.getAbsolutePath() + " not found!");
                 e.printStackTrace();
