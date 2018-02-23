@@ -70,8 +70,13 @@ public class ECSHashRing {
     }
 
     private static final BigInteger BIG_ONE = new BigInteger("1", 16);
+
     public ECSNode getNextNode(ECSNode n) {
-        BigInteger hash = new BigInteger(n.getNodeHash(), 16);
+        return getNextNode(n.getNodeHash());
+    }
+
+    public ECSNode getNextNode(String h) {
+        BigInteger hash = new BigInteger(h, 16);
         hash = hash.add(BIG_ONE);
         return getNodeByKey(hash.toString(16));
     }
@@ -114,12 +119,19 @@ public class ECSHashRing {
      */
     public void removeNode(String hash) {
         ECSNode toRemove = getNodeByKey(hash);
+        if (toRemove == null) {
+            throw new HashRingException(
+                    "HashRing empty! while attempting to move item from it");
+        }
+        ECSNode next = getNextNode(hash);
+        assert next != null;
 
-        ECSNode next = getNextNode(toRemove);
-
-        if ((toRemove.equals(next) && (!toRemove.equals(root)))
+        if (toRemove.equals(next) && root.getNodeHash().equals(hash)) {
+            // remove the last element in hash ring
+            root = null;
+            return;
+        } else if ((toRemove.equals(next) && !root.getNodeHash().equals(hash))
                 || !(next.getPrev().equals(toRemove))) {
-            logger.debug(this);
             throw new HashRingException("Invalid node hash value! (" + hash + ")\nnext: "
                     + next + "\nthis: " + toRemove + "\nnext->prev: " + next.getPrev());
         }

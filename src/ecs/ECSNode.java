@@ -111,6 +111,8 @@ public class ECSNode extends RawECSNode implements IECSNode {
      * @return hex string (might not be 32 digits long because leading zeros are ignored)
      */
     public String getNodeHash() {
+        assert host != null;
+        assert port != null;
         if (this.hash == null) {
             md.reset();
             md.update((host + ":" + port).getBytes());

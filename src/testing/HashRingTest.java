@@ -3,11 +3,20 @@ package testing;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
 import junit.framework.TestCase;
+import logger.LogSetup;
+import org.apache.log4j.Level;
 import org.junit.Before;
 
 public class HashRingTest extends TestCase {
     private Exception ex;
     private static ECSHashRing hr = new ECSHashRing();
+
+    public void setUp() throws Exception {
+        super.setUp();
+        if (!LogSetup.isActive()) {
+            new LogSetup("./logs/test_ecs.log", Level.ALL);
+        }
+    }
 
     @Before
     public void preTest() {
