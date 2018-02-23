@@ -82,7 +82,7 @@ public class ECSNode extends RawECSNode implements IECSNode {
     @Override
     public String toString() {
         return "ECSNode{" +
-                "hash='" + hash + '\'' +
+                "hash='" + getNodeHash() + '\'' +
                 ", status=" + status +
                 ", name='" + name + '\'' +
                 ", host='" + host + '\'' +
@@ -114,12 +114,16 @@ public class ECSNode extends RawECSNode implements IECSNode {
         assert host != null;
         assert port != null;
         if (this.hash == null) {
-            md.reset();
-            md.update((host + ":" + port).getBytes());
-            BigInteger val = new BigInteger(1, md.digest());
-            this.hash = val.toString(16);
+            this.hash = calcHash(host + ":" + port);
         }
         return this.hash;
+    }
+
+    public static synchronized String calcHash(String data) {
+        md.reset();
+        md.update(data.getBytes());
+        BigInteger val = new BigInteger(1, md.digest());
+        return val.toString(16);
     }
 
     @Override
@@ -136,25 +140,16 @@ public class ECSNode extends RawECSNode implements IECSNode {
 
 
     public static boolean isKeyInRange(String key, String[] hexRange){
-        md.reset();
-        md.update((key).getBytes());
-        BigInteger val = new BigInteger(1, md.digest());
-        String keyHash = val.toString(16);
+        String keyHash = calcHash(key);
         BigInteger lower = new BigInteger(hexRange[0], 16);
         BigInteger upper = new BigInteger(hexRange[1], 16);
         BigInteger k = new BigInteger(keyHash, 16);
 
         if (upper.compareTo(lower) <= 0) {
             // The node is responsible for ring end
-            if (k.compareTo(upper) <= 0 || k.compareTo(lower) > 0) {
-                return true;
-            }
+            return k.compareTo(upper) <= 0 || k.compareTo(lower) > 0;
         } else {
-            if (k.compareTo(upper) <= 0 && k.compareTo(lower) > 0) {
-                return true;
-            }
+            return k.compareTo(upper) <= 0 && k.compareTo(lower) > 0;
         }
-
-        return false;
     }
 }

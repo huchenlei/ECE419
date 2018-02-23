@@ -88,6 +88,7 @@ public class ECSHashRing {
      * @param node ecsnode instance
      */
     public void addNode(ECSNode node) {
+        logger.info("Adding node " + node);
         if (root == null) {
             root = node;
             root.setPrev(node);
@@ -118,6 +119,7 @@ public class ECSHashRing {
      * @param hash md5 hash string
      */
     public void removeNode(String hash) {
+        logger.info("Removing node with hash " + hash);
         ECSNode toRemove = getNodeByKey(hash);
         if (toRemove == null) {
             throw new HashRingException(
