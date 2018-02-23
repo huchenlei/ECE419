@@ -15,7 +15,7 @@ public class PersistentStoreTest extends TestCase {
 
     @Override
     public void setUp() {
-        BasicConfigurator.configure();
+//        BasicConfigurator.configure();
         ex = null;
         storeFile = new KVIterateStore();
     }
@@ -24,6 +24,10 @@ public class PersistentStoreTest extends TestCase {
     public void testPutGet() throws Exception {
         storeFile.clearStorage();
         String value;
+
+        storeFile.put("equal", "this is = equal");
+        value = storeFile.get("equal");
+        assertTrue("this is = equal".equals(value));
 
         storeFile.put("hello", "world");
         value = storeFile.get("hello");

@@ -35,10 +35,14 @@ public class KVIterateStore implements KVPersistentStore {
 
     private String encodeValue(String value) {
         this.value = value;
-        return value.replaceAll("\r", "\\\\r").replaceAll("\n", "\\\\n");
+        return value.replaceAll("\r", "\\\\r")
+                .replaceAll("\n", "\\\\n")
+                .replaceAll("=", "\\\\=");
     }
     private String decodeValue(String value) {
-        return value.replaceAll("\\\\r", "\r").replaceAll("\\\\n", "\n");
+        return value.replaceAll("\\\\r", "\r")
+                .replaceAll("\\\\n", "\n")
+                .replaceAll("\\\\=", "=");
     }
 
     private void deleteEntry(RandomAccessFile raf, long offset1, long offset2) throws IOException {
@@ -145,7 +149,7 @@ public class KVIterateStore implements KVPersistentStore {
                     System.out.println("how could it be");
                     continue;
                 }
-                String[] strs = line.split("=");
+                String[] strs = line.split("(?<!\\\\)=");
                 if (strs.length != 2) {
                     raf.close();
                     throw new IOException(prompt + "Invalid Entry found: " + line);
@@ -218,7 +222,7 @@ public class KVIterateStore implements KVPersistentStore {
                     System.out.println("how could it be");
                     continue;
                 }
-                String[] strs = line.split("=");
+                String[] strs = line.split("(?<!\\\\)=");
                 if (strs.length != 2) {
                     raf.close();
                     throw new IOException(prompt + "Invalid Entry found: " + line);
@@ -277,7 +281,7 @@ public class KVIterateStore implements KVPersistentStore {
             logger.error("Unable to rename the remain file");
         }
 
-        
+
 
 
 
