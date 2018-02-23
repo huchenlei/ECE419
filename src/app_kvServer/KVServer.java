@@ -250,9 +250,8 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     break;
                 case SHUT_DOWN:
                     zk.delete(path, zk.exists(path, false).getVersion());
+                    kill();
                     logger.info("Server shutdown");
-                    // terminate server
-                    System.exit(0);
                     break;
                 case LOCK_WRITE:
                     break;
@@ -541,18 +540,21 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
             long totalLength = 0;
             int len;
-
+            int progress = 0;
             while ((len = in.read(buffer)) > 0) {
-                out.write(buffer, 0, len);
-                totalLength += len;
-
                 // update percentage
-                int progress = (int) ((float) totalLength / (float) fileLength * 100.0);
+                progress = (int) ((float) totalLength / (float) fileLength * 100.0);
                 // write into zookeeper
                 updateTransferProgress(progress);
+                logger.debug("TransferProgress: " + progress);
 
+                out.write(buffer, 0, len);
+                totalLength += len;
             }
 
+            updateTransferProgress(100);
+            logger.debug("TransferProgress: " + progress);
+            updateTransferProgress(progress);
             in.close();
             out.flush();
             out.close();
