@@ -7,10 +7,13 @@ import junit.framework.TestCase;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.junit.Before;
+import org.junit.FixMethodOrder;
+import org.junit.runners.MethodSorters;
 
 import java.io.IOException;
 import java.util.*;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ECSTest extends TestCase {
     private static final Integer BIG_SERVER_NUM = 1024 * 1024;
     private static final String CACHE_STRATEGY = "FIFO";
@@ -31,7 +34,7 @@ public class ECSTest extends TestCase {
         ex = null;
     }
 
-    public void testCreation() throws IOException {
+    public void test01Creation() throws IOException {
         ecs = new ECS("./ecs.config");
         new ECS("./test_instances/ecs_dup_name.config");
         try {
@@ -59,7 +62,7 @@ public class ECSTest extends TestCase {
         nodes = ecs.addNodes(BIG_SERVER_NUM, CACHE_STRATEGY, CACHE_SIZE);
         assertNull(nodes);
     }*/
-    public void testAddNodes() throws Exception {
+    public void test02AddNodes() throws Exception {
         Collection<IECSNode> nodes =
                 ecs.setupNodes(BIG_SERVER_NUM, CACHE_STRATEGY, CACHE_SIZE);
         assertNull(nodes);
@@ -83,7 +86,7 @@ public class ECSTest extends TestCase {
     /**
      * Start the nodes just added
      */
-    public void testStartNodes() throws Exception {
+    public void test03StartNodes() throws Exception {
         assertNotNull(ecs);
         boolean ret = ecs.start();
         assertTrue(ret);
@@ -92,7 +95,7 @@ public class ECSTest extends TestCase {
     /**
      * Remove one active node from whole service
      */
-    public void testRemoveNodes() {
+    public void test04RemoveNodes() {
         List<String> names = new ArrayList<>(ecs.getNodes().keySet());
         assertTrue(names.size() > 0);
         boolean ret = ecs.removeNodes(Collections.singletonList(names.get(0)));
@@ -102,7 +105,7 @@ public class ECSTest extends TestCase {
     /**
      * Stop all active nodes
      */
-    public void testStop() throws Exception {
+    public void test05Stop() throws Exception {
         boolean ret = ecs.stop();
         assertTrue(ret);
     }
@@ -110,7 +113,7 @@ public class ECSTest extends TestCase {
     /**
      * Shut down all nodes
      */
-    public void testShutdown() throws Exception {
+    public void test06Shutdown() throws Exception {
         boolean ret = ecs.shutdown();
         assertTrue(ret);
     }
