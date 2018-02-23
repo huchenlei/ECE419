@@ -8,6 +8,9 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import server.ServerMetaData;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 public class ECSTransferListener implements Watcher {
     // total timeout 2 hours
     public static final Integer MAX_TIMEOUT = 2 * 3600 * 1000;
@@ -27,6 +30,8 @@ public class ECSTransferListener implements Watcher {
 
     private String prompt;
 
+    private CountDownLatch sig = null;
+
     public ECSTransferListener(ZooKeeper zk, ECSNode sender, ECSNode receiver) {
         this.zk = zk;
         this.sender = sender;
@@ -36,6 +41,11 @@ public class ECSTransferListener implements Watcher {
 
     public boolean start() throws InterruptedException {
         try {
+            checkSender();
+            if (senderComplete && receiverComplete) {
+                logger.info(prompt + "transmission complete");
+                return true;
+            }
             zk.exists(ECS.getNodePath(sender), this);
         } catch (KeeperException e) {
             logger.error(e.getMessage());
@@ -47,7 +57,8 @@ public class ECSTransferListener implements Watcher {
             Integer ps = senderProgress;
             Integer pr = receiverProgress;
 
-            this.wait(TIMEOUT);
+            sig = new CountDownLatch(1);
+            sig.await(TIMEOUT, TimeUnit.MILLISECONDS);
 
             if (senderComplete && receiverComplete) {
                 // Complete
@@ -76,7 +87,26 @@ public class ECSTransferListener implements Watcher {
         } else {
             zk.exists(ECS.getNodePath(receiver), this);
         }
-        this.notify();
+        if (sig != null) sig.countDown();
+    }
+
+    private void checkSender() throws KeeperException, InterruptedException {
+        // Monitor sender
+        byte[] data = zk.getData(ECS.getNodePath(sender), false, null);
+        ServerMetaData metadata = parseServerData(data);
+        senderProgress = metadata.getTransferProgress();
+        logger.info(prompt + senderProgress + "%");
+
+        if (metadata.isIdle()) {
+            // Sender complete, now monitoring receiver
+            senderComplete = true;
+            logger.info(prompt + "sender side complete");
+            checkReceiver();
+        } else {
+            // Continue listing for sender progress
+            zk.exists(ECS.getNodePath(sender), this);
+            if (sig != null) sig.countDown();
+        }
     }
 
     @Override
@@ -84,22 +114,7 @@ public class ECSTransferListener implements Watcher {
         if (event.getType().equals(Event.EventType.NodeDataChanged)) {
             try {
                 if (!senderComplete) {
-                    // Monitor sender
-                    byte[] data = zk.getData(ECS.getNodePath(sender), false, null);
-                    ServerMetaData metadata = parseServerData(data);
-                    senderProgress = metadata.getTransferProgress();
-                    logger.info(prompt + senderProgress + "%");
-
-                    if (metadata.isIdle()) {
-                        // Sender complete, now monitoring receiver
-                        senderComplete = true;
-                        logger.info(prompt + "sender side complete");
-                        checkReceiver();
-                    } else {
-                        // Continue listing for sender progress
-                        zk.exists(ECS.getNodePath(sender), this);
-                        this.notify();
-                    }
+                    checkSender();
                 } else if (!receiverComplete) {
                     checkReceiver();
                 }
