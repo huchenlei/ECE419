@@ -17,6 +17,7 @@ import performance.DataParser;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static testing.ECSLoadTest.TestHelper.getRandomClient;
 import static testing.ECSLoadTest.TestHelper.testGetData;
@@ -45,7 +46,30 @@ public class ECSLoadTest extends TestCase {
     private Exception ex = null;
     private static Map<ECSNode, KVServer> serverTable = new HashMap<>();
     private static List<KVStore> clients = new ArrayList<>();
-    private static List<KVMessage> msgs = DataParser.parseDataFrom("arora-h");
+    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox");
+
+    static class TestHelper {
+        static final Integer ACCESS_NUM = 64;
+
+        static KVStore getRandomClient() {
+            assert clients != null;
+            return clients.get(new Random().nextInt(clients.size() - 1));
+        }
+
+        /**
+         * Request data from servers
+         */
+        static void testGetData() throws Exception {
+            for (int i = 0; i < ACCESS_NUM; i++) {
+                int randIndex = new Random().nextInt(msgs.size() - 1);
+                KVMessage msg = msgs.get(randIndex);
+                KVStore client = getRandomClient();
+                KVMessage ret = client.get(msg.getKey());
+                assertEquals(KVMessage.StatusType.GET_SUCCESS, ret.getStatus());
+                assertEquals(msg.getValue(), ret.getValue());
+            }
+        }
+    }
 
     @Before
     public void preTest() {
@@ -116,22 +140,41 @@ public class ECSLoadTest extends TestCase {
         testGetData();
     }
 
-    public static class TestHelper {
-        public static KVStore getRandomClient() {
-            assert clients != null;
-            return clients.get(new Random().nextInt(clients.size() - 1));
-        }
+    /**
+     * Remove few of the servers from
+     */
+    public void test05RemoveNodes() throws Exception {
+        ArrayList<ECSNode> nodes = new ArrayList<>(serverTable.keySet());
+        // Remove the first two nodes
+        ecs.removeNodes(
+                nodes.subList(0, 1).stream().map(ECSNode::getNodeName)
+                        .collect(Collectors.toList()));
+        testGetData();
+    }
 
-        /**
-         * Request data from servers
-         */
-        public static void testGetData() throws Exception {
-            for (KVMessage msg : msgs) {
-                KVStore client = getRandomClient();
-                KVMessage ret = client.get(msg.getKey());
-                assertEquals(ret.getValue(), msg.getValue());
-                assertEquals(ret.getStatus(), KVMessage.StatusType.GET_SUCCESS);
-            }
-        }
+    /**
+     * Stop the service and restart it
+     */
+    public void test06StopNodes() throws Exception {
+        boolean ret = ecs.stop();
+        assertTrue(ret);
+
+        assert clients.size() > 0;
+        assert msgs.size() > 0;
+        KVMessage m = clients.get(0).get(msgs.get(0).getKey());
+        assertEquals(KVMessage.StatusType.SERVER_STOPPED, m.getStatus());
+
+        // restart the servers should recover the service
+        ret = ecs.start();
+        assertTrue(ret);
+
+        testGetData();
+    }
+
+    /**
+     * Add nodes when there is existing service online
+     */
+    public void test07AddNodesExisting() {
+
     }
 }

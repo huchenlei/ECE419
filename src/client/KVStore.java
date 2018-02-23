@@ -5,6 +5,7 @@ import common.messages.AbstractKVMessage;
 import common.messages.KVMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
+import ecs.ECSNode;
 
 import java.net.Socket;
 
@@ -58,11 +59,12 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         res.decode(receiveMessage().getMsg());
         //if res is NOT_RESPONSIBLE, the message should include new metadata, retry the request
         if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
-        		hashRingString = res.getValue();
-        		hashRing = new ECSHashRing(hashRingString);
-        		this.address = hashRing.getNodeByKey(key).getNodeHost();
-        		this.port = hashRing.getNodeByKey(key).getNodePort();
-        		return this.resendRequest(key, value, req.getStatus());
+            hashRingString = res.getValue();
+            hashRing = new ECSHashRing(hashRingString);
+            String hash = ECSNode.calcHash(key);
+            this.address = hashRing.getNodeByKey(hash).getNodeHost();
+            this.port = hashRing.getNodeByKey(hash).getNodePort();
+            return this.resendRequest(key, value, req.getStatus());
         }
         return res;
     }
@@ -80,24 +82,24 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         res.decode(receiveMessage().getMsg());
         //if res is NOT_RESPONSIBLE, the message should include new metadata, retry the request
         if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
-        		hashRingString = res.getValue();
-        		hashRing = new ECSHashRing(hashRingString);
-        		this.address = hashRing.getNodeByKey(key).getNodeHost();
-        		this.port = hashRing.getNodeByKey(key).getNodePort();
-        		return this.resendRequest(key, null, req.getStatus());
+            hashRingString = res.getValue();
+            hashRing = new ECSHashRing(hashRingString);
+            String hash = ECSNode.calcHash(key);
+            this.address = hashRing.getNodeByKey(hash).getNodeHost();
+            this.port = hashRing.getNodeByKey(hash).getNodePort();
+            return this.resendRequest(key, null, req.getStatus());
         }
         return res;
     }
-    
+
     private KVMessage resendRequest(String key, String value, KVMessage.StatusType request) throws Exception {
- 
-    		disconnect();
-    		connect();
-    		if (request.equals(KVMessage.StatusType.PUT)) {
-    			return this.put(key, value);
-    		}
-    		else {
-    			return this.get(key);
-    		}
+
+        disconnect();
+        connect();
+        if (request.equals(KVMessage.StatusType.PUT)) {
+            return this.put(key, value);
+        } else {
+            return this.get(key);
+        }
     }
 }

@@ -79,7 +79,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
                 ECSHashRing hashRing = ((KVServer)kvServer).getHashRing();
                 if (hashRing != null){
-                    ECSNode node = hashRing.getNodeByKey(m.getKey());
+                    ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
                     if (node != null) {
                         if (!node.getNodeName().equals(((KVServer)kvServer).getServerName())) {
                             res.setValue(((KVServer)kvServer).getHashRingString());
