@@ -27,11 +27,13 @@ public class KVIterateStore implements KVPersistentStore {
 
     public KVIterateStore(String fileName) {
         this.fileName = fileName;
+        prompt = "KVIterateStore(" + fileName + "):";
         openFile();
     }
 
     public KVIterateStore(String fileName, String dir) {
         this.fileName = fileName;
+        prompt = "KVIterateStore(" + fileName + "):";
         this.dir = dir;
         openFile();
     }
@@ -41,6 +43,7 @@ public class KVIterateStore implements KVPersistentStore {
                 .replaceAll("\n", "\\\\n")
                 .replaceAll(ESCAPER, ESCAPED_ESCAPER);
     }
+
     private String decodeValue(String value) {
         return value.replaceAll("\\\\r", "\r")
                 .replaceAll("\\\\n", "\n")
@@ -67,7 +70,7 @@ public class KVIterateStore implements KVPersistentStore {
         rTemp.close();
     }
 
-    private void updateEntry(RandomAccessFile raf, long offset1, long offset2, byte[] stringBytes) throws IOException{
+    private void updateEntry(RandomAccessFile raf, long offset1, long offset2, byte[] stringBytes) throws IOException {
         RandomAccessFile rTemp = new RandomAccessFile(new File(this.dir + "/" + "." + this.fileName + "~"),
                 "rw");
         long fileSize = raf.length();
@@ -170,7 +173,7 @@ public class KVIterateStore implements KVPersistentStore {
             throw fnf;
         }
 
-        if (value != null){
+        if (value != null) {
             value = decodeValue(value);
         }
         return value;
@@ -199,7 +202,7 @@ public class KVIterateStore implements KVPersistentStore {
         return this.dir + "/" + this.fileName;
     }
 
-    public void preMoveData(String[] hashRange){
+    public void preMoveData(String[] hashRange) {
         File moveFile = new File(getfileName() + MOVE_SUFFIX);
         File remainFile = new File(getfileName() + REMAIN_SUFFIX);
 
@@ -233,7 +236,7 @@ public class KVIterateStore implements KVPersistentStore {
                 byte[] stringBytes = (curKey + DELIM + curValue + "\r\n").getBytes("UTF-8");
 
                 // append to move file
-                if (ECSNode.isKeyInRange(decodeValue(curKey), hashRange)){
+                if (ECSNode.isKeyInRange(decodeValue(curKey), hashRange)) {
                     long offset = moveRaf.length();
                     moveRaf.seek(offset);
                     moveRaf.write(stringBytes);
@@ -258,32 +261,26 @@ public class KVIterateStore implements KVPersistentStore {
 
     }
 
-    public void afterMoveData(){
+    public void afterMoveData() {
         File moveFile = new File(getfileName() + MOVE_SUFFIX);
         File remainFile = new File(getfileName() + REMAIN_SUFFIX);
 
-        if (moveFile.delete()){
+        if (moveFile.delete()) {
             logger.debug("Move file deleted");
-        }
-        else {
+        } else {
             logger.error("Unable to delete the move file");
         }
 
-        if (this.storageFile.delete()){
+        if (this.storageFile.delete()) {
             logger.debug("Original file deleted");
-        }
-        else {
+        } else {
             logger.error("Unable to delete the original file");
         }
-        if (remainFile.renameTo(new File(getfileName()))){
+        if (remainFile.renameTo(new File(getfileName()))) {
             logger.debug("successfully rename the remain file");
-        }
-        else {
+        } else {
             logger.error("Unable to rename the remain file");
         }
-
-
-
 
 
     }

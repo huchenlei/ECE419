@@ -66,8 +66,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         return hashRingString;
     }
 
-    /**
+    public String prompt() {
+        return "(" + this.serverName + "): ";
+    }
 
+    /**
      * Start KV Server at given port
      *
      * @param port      given port for storage server to operate
@@ -132,7 +135,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             }
 
         } catch (IOException e) {
-            logger.error("Unable to connect to zookeeper");
+            logger.debug(prompt() + "Unable to connect to zookeeper");
             e.printStackTrace();
         }
 
@@ -148,7 +151,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             this.strategy = CacheStrategy.valueOf(json.getCacheStrategy());
 
         } catch (InterruptedException | KeeperException e) {
-            logger.error("Unable to retrieve cache info from " + zkPath);
+            logger.debug(prompt() + "Unable to retrieve cache info from " + zkPath);
             this.strategy = CacheStrategy.FIFO;
             this.cacheSize = 100;
             e.printStackTrace();
@@ -157,17 +160,17 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         try {
             //remove the init message if have
             List<String> children = zk.getChildren(zkPath, false, null);
-            if (!children.isEmpty()){
+            if (!children.isEmpty()) {
                 String messagePath = zkPath + "/" + children.get(0);
                 byte[] data = zk.getData(messagePath, false, null);
                 KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
-                if (message.getOperationType().equals(KVAdminMessage.OperationType.INIT)){
+                if (message.getOperationType().equals(KVAdminMessage.OperationType.INIT)) {
                     zk.delete(messagePath, zk.exists(messagePath, false).getVersion());
-                    logger.info("Server initiated at constructor");
+                    logger.info(prompt() + "Server initiated at constructor");
                 }
             }
         } catch (InterruptedException | KeeperException e) {
-            logger.error("Unable to get child nodes");
+            logger.debug(prompt() + "Unable to get child nodes");
             e.printStackTrace();
         }
 
@@ -180,20 +183,20 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                         byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, this, null);
                         hashRingString = new String(hashRingData);
                         hashRing = new ECSHashRing(hashRingString);
-                        logger.info("Hash Ring updated");
+                        logger.info(prompt() + "Hash Ring updated");
                     } catch (KeeperException | InterruptedException e) {
-                        logger.info("Unable to update the metadata node");
+                        logger.info(prompt() + "Unable to update the metadata node");
                         e.printStackTrace();
                     }
                 }
             }, null);
-            logger.debug("Hash ring found");
+            logger.debug(prompt() + "Hash Ring found");
             hashRingString = new String(hashRingData);
             hashRing = new ECSHashRing(hashRingString);
 
 
         } catch (InterruptedException | KeeperException e) {
-            logger.error("Unable to get metadata info");
+            logger.debug(prompt() + "Unable to get metadata info");
             e.printStackTrace();
         }
 
@@ -221,7 +224,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             // set watcher on childrens
             zk.getChildren(this.zkPath, this, null);
         } catch (InterruptedException | KeeperException e) {
-            logger.error("Unable to get set watcher on children");
+            logger.debug(prompt() + "Unable to get set watcher on children");
             e.printStackTrace();
         }
 
@@ -247,12 +250,12 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             switch (message.getOperationType()) {
                 case INIT:
                     zk.delete(path, zk.exists(path, false).getVersion());
-                    logger.info("Server initiated");
+                    logger.info(prompt() + "Server initiated");
                     break;
                 case SHUT_DOWN:
                     zk.delete(path, zk.exists(path, false).getVersion());
                     kill();
-                    logger.info("Server shutdown");
+                    logger.info(prompt() + "Server shutdown");
                     break;
                 case LOCK_WRITE:
                     break;
@@ -277,7 +280,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     // delete the message node
                     zk.delete(path, zk.exists(path, false).getVersion());
 
-                    logger.info("Waiting for data transfer on port " + receivePort + " " + zkPath);
+                    logger.info(prompt() + "Waiting for data transfer on port " + receivePort + " " + zkPath);
                     break;
 
                 case SEND:
@@ -302,7 +305,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
                     // delete the message node
                     zk.delete(path, zk.exists(path, false).getVersion());
-                    logger.info("Server" + zkPath + "start sending....");
+                    logger.info(prompt() + "Server" + zkPath + "start sending....");
 
                     // send data
                     sendData(message.getHashRange(), message.getReceiverHost(), receiverPort);
@@ -312,13 +315,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 case START:
                     this.start();
                     zk.delete(path, zk.exists(path, false).getVersion());
-                    logger.info("Server started.");
+                    logger.info(prompt() + "Server started.");
                     break;
 
                 case STOP:
                     this.stop();
                     zk.delete(path, zk.exists(path, false).getVersion());
-                    logger.info("Server stopped.");
+                    logger.info(prompt() + "Server stopped.");
                     break;
 
             }
@@ -326,7 +329,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             // re-register the watch
             zk.getChildren(zkPath, this, null);
         } catch (KeeperException | InterruptedException e) {
-            logger.error("Unable to process the watcher event");
+            logger.debug(prompt() + "Unable to process the watcher event");
             e.printStackTrace();
         }
 
@@ -341,7 +344,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             lockWrite();
             return port;
         } catch (IOException e) {
-            logger.error("Unable to open a receiver socket!");
+            logger.debug(prompt() + "Unable to open a receiver socket!");
             e.printStackTrace();
             return 0; // this exception should be handled by ecs
         }
@@ -395,7 +398,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     }
 
 
-
     @Override
     public boolean inStorage(String key) {
         try {
@@ -403,7 +405,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         } catch (Exception e) {
             // when there is problem reading the file from disk
             // consider it as data not on disk
-            logger.error("Unable to access data file on disk!");
+            logger.debug(prompt() + "Unable to access data file on disk!");
             e.printStackTrace();
             return false;
         }
@@ -464,7 +466,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         try {
             serverSocket.close();
         } catch (IOException e) {
-            logger.error("Unable to close socket on port: " + port, e);
+            logger.debug(prompt() + "Unable to close socket on port: " + port, e);
         }
         // TODO Store everything in cache but not in storage
         // TODO Currently there shall not be any concern on this issue
@@ -489,13 +491,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public void lockWrite() {
-        logger.info("Server status change to WRITE_LOCK");
+        logger.info(prompt() + "Server status change to WRITE_LOCK");
         this.status = ServerStatus.LOCK;
     }
 
     @Override
     public void unlockWrite() {
-        logger.info("Server Unlock Write");
+        logger.info(prompt() + "Server Unlock Write");
         this.status = ServerStatus.START;
     }
 
@@ -506,7 +508,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     }
 
 
-    public void updateTransferProgress(int transferProgress){
+    public void updateTransferProgress(int transferProgress) {
         try {
             byte[] rawSenderMetaData = zk.getData(zkPath, false, null);
             String senderMetaDataString = new String(rawSenderMetaData);
@@ -518,7 +520,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     zk.exists(zkPath, false).getVersion());
 
         } catch (InterruptedException | KeeperException e) {
-            logger.error("Unable to update progress");
+            logger.debug(prompt() + "Unable to update progress");
             e.printStackTrace();
         }
 
@@ -528,7 +530,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         try {
             this.lockWrite();
 
-            ((KVIterateStore)this.store).preMoveData(hashRange);
+            ((KVIterateStore) this.store).preMoveData(hashRange);
 
             String moveFileName = this.store.getfileName() + KVIterateStore.MOVE_SUFFIX;
             File moveFile = new File(moveFileName);
@@ -547,29 +549,29 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 progress = (int) ((float) totalLength / (float) fileLength * 100.0);
                 // write into zookeeper
                 updateTransferProgress(progress);
-                logger.debug("TransferProgress: " + progress);
+                logger.debug(prompt() + "TransferProgress: " + progress);
 
                 out.write(buffer, 0, len);
                 totalLength += len;
             }
 
             updateTransferProgress(100);
-            logger.debug("TransferProgress: " + progress);
+            logger.debug(prompt() + "TransferProgress: " + progress);
             updateTransferProgress(progress);
             in.close();
             out.flush();
             out.close();
             clientSocket.close();
 
-            ((KVIterateStore)this.store).afterMoveData();
+            ((KVIterateStore) this.store).afterMoveData();
 
             this.unlockWrite();
 
-            logger.info("Finish transferring data");
+            logger.info(prompt() + "Finish transferring data");
 
             return true;
         } catch (IOException e) {
-            logger.error("Unable to connect receiver");
+            logger.debug(prompt() + "Unable to connect receiver");
             e.printStackTrace();
             this.unlockWrite();
             return false;
@@ -587,11 +589,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     KVServerConnection conn = new KVServerConnection(this, client);
                     new Thread(conn).start();
 
-                    logger.info("Connected to "
+                    logger.info(prompt() + "Connected to "
                             + client.getInetAddress().getHostName()
                             + " on port " + client.getPort());
                 } catch (IOException e) {
-                    logger.error("Unable to establish connection with client.\n", e);
+                    logger.debug(prompt() + "Unable to establish connection with client.\n", e);
                 }
             }
         }
@@ -602,17 +604,17 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     }
 
     private boolean initializeServer() {
-        logger.info("Initialize server ...");
+        logger.info(prompt() + "Initialize server ...");
         try {
             serverSocket = new ServerSocket(port);
-            logger.info("Server listening on port: "
+            logger.info(prompt() + "Server listening on port: "
                     + serverSocket.getLocalPort());
             this.port = serverSocket.getLocalPort();
             return true;
         } catch (IOException e) {
-            logger.error("Error! Cannot open server socket:");
+            logger.debug(prompt() + "Error! Cannot open server socket:");
             if (e instanceof BindException) {
-                logger.error("Port " + port + " is already bound!");
+                logger.debug(prompt() + "Port " + port + " is already bound!");
             }
             return false;
         }

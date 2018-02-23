@@ -81,8 +81,15 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
             hashRingString = res.getValue();
             hashRing = new ECSHashRing(hashRingString);
             String hash = ECSNode.calcHash(res.getKey());
-            this.address = hashRing.getNodeByKey(hash).getNodeHost();
-            this.port = hashRing.getNodeByKey(hash).getNodePort();
+            ECSNode newServer = hashRing.getNodeByKey(hash);
+
+            logger.info("Now connect to " + newServer);
+            logger.debug("Node hash range " + newServer.getNodeHashRange()[0]
+                    + " -> " + newServer.getNodeHashRange()[1]);
+            logger.debug("Key hash is " + hash);
+
+            this.address = newServer.getNodeHost();
+            this.port = newServer.getNodePort();
             if (req.getStatus().equals(KVMessage.StatusType.GET)) {
                 return resendRequest(req.getKey(), null, req.getStatus());
             } else if (req.getStatus().equals(KVMessage.StatusType.PUT)){
