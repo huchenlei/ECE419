@@ -148,7 +148,6 @@ public class KVIterateStore implements KVPersistentStore {
                 line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
                 this.startOffset = this.endOffset;
                 this.endOffset = raf.getFilePointer();
-                line = line.trim();
                 if (line.isEmpty()) {
                     System.out.println("how could it be");
                     continue;
@@ -221,7 +220,6 @@ public class KVIterateStore implements KVPersistentStore {
                 line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
                 this.startOffset = this.endOffset;
                 this.endOffset = raf.getFilePointer();
-                line = line.trim();
                 if (line.isEmpty()) {
                     System.out.println("how could it be");
                     continue;
