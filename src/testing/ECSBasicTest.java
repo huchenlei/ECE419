@@ -19,7 +19,7 @@ import java.util.Collections;
 import java.util.List;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class ECSTest extends TestCase {
+public class ECSBasicTest extends TestCase {
     private static Logger logger = Logger.getRootLogger();
     private static final Integer BIG_SERVER_NUM = 1024 * 1024;
     private static final String CACHE_STRATEGY = "FIFO";
@@ -40,6 +40,10 @@ public class ECSTest extends TestCase {
         ex = null;
     }
 
+    /*
+    Following are the basic functionality test for ECS
+    No client data interaction is included
+     */
     public void test01Creation() throws IOException {
         ecs = new ECS("./ecs.config");
         new ECS("./test_instances/ecs_dup_name.config");
@@ -130,4 +134,5 @@ public class ECSTest extends TestCase {
         boolean ret = ecs.shutdown();
         assertTrue(ret);
     }
+
 }

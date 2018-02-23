@@ -123,13 +123,14 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                         "".equals(m.getValue()) ||
                     // Empty string is not allowed as key or value on server side
                     // Value of empty string is supposed to be converted to "null" at the client side
-                        m.getKey().matches(".*\\s.*") ||
-                        m.getValue().matches(".*\\s.*") ||
+//                        m.getKey().matches(".*\\s.*") ||
+//                        m.getValue().matches(".*\\s.*") ||
                     // The key or value can not contain any white space characters such as '\t', ' ' or '\n'
                         m.getKey().length() > KVServer.MAX_KEY ||
                         m.getValue().length() > KVServer.MAX_VAL
                     // The key or value can not exceed designated length
                         ) {
+                    logger.info("Bad key val pair received " + m);
                     res.setStatus(KVMessage.StatusType.PUT_ERROR);
                     break;
                 }
@@ -139,8 +140,10 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                 } catch (Exception e) {
                     if ("null".equals(m.getValue()))
                         res.setStatus(KVMessage.StatusType.DELETE_ERROR);
-                    else
+                    else {
+                        logger.info("Failed to put kv " + e.getMessage());
                         res.setStatus(KVMessage.StatusType.PUT_ERROR);
+                    }
                     break;
                 }
 
