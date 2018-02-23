@@ -8,6 +8,7 @@ import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -21,7 +22,8 @@ import java.util.Objects;
  */
 public class DataParser {
     private static Logger logger = Logger.getRootLogger();
-    public static final String DATA_ROOT = "~/dataset/maildir";
+    public static final String DATA_ROOT = System.getProperty("user.home")
+            + "/dataset/maildir";
 
     /**
      * Convert all data files under certain dir under DATA_ROOT
@@ -31,7 +33,7 @@ public class DataParser {
      * @return List of KVMessages
      */
     public static List<KVMessage> parseDataFrom(String dir) {
-        Collection<File> files = FileUtils.listFiles(new File(DATA_ROOT + dir),
+        Collection<File> files = FileUtils.listFiles(new File(DATA_ROOT + "/" + dir),
                 new RegexFileFilter("^(.*?)"),
                 DirectoryFileFilter.DIRECTORY);
         ArrayList<KVMessage> result = new ArrayList<>();
@@ -45,7 +47,7 @@ public class DataParser {
                 }
                 MessageDigest md = MessageDigest.getInstance("MD5");
                 md.update(val.toString().getBytes());
-                String key = new String(md.digest());
+                String key = new BigInteger(1, md.digest()).toString(16);
                 result.add(new JsonKVMessage(key, val.toString(), "PUT"));
             } catch (FileNotFoundException e) {
                 logger.error(file.getAbsolutePath() + " not found!");
