@@ -68,6 +68,7 @@ public class KVServerReceiver implements Runnable {
 
             // update the progress to 100
             ((KVServer)this.kvServer).updateTransferProgress(100);
+            logger.debug("Receiver Finish receiving");
 
             // release the lock
             kvServer.unlockWrite();
