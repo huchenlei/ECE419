@@ -16,7 +16,6 @@ public class KVIterateStore implements KVPersistentStore {
     private long endOffset;
     public static String MOVE_SUFFIX = "_move";
     public static String REMAIN_SUFFIX = "_remain";
-    private String value;
 
     public KVIterateStore() {
         openFile();
@@ -34,7 +33,6 @@ public class KVIterateStore implements KVPersistentStore {
     }
 
     private String encodeValue(String value) {
-        this.value = value;
         return value.replaceAll("\r", "\\\\r")
                 .replaceAll("\n", "\\\\n")
                 .replaceAll("=", "\\\\=");
@@ -92,19 +90,18 @@ public class KVIterateStore implements KVPersistentStore {
 
     @Override
     public void put(String key, String value) throws Exception {
-        String value_store = encodeValue(value);
-
+        value = encodeValue(value);
         assert (this.storageFile != null);
         // search if key already exist;
         String getValue = this.get(key);
-
+        key = encodeValue(key);
         // construct an entry string with fixed length
-        byte[] stringBytes = (key + "=" + value_store + "\r\n").getBytes("UTF-8");
+        byte[] stringBytes = (key + "=" + value + "\r\n").getBytes("UTF-8");
 
         //modify the storage file
         RandomAccessFile raf = new RandomAccessFile(this.storageFile, "rw");
         try {
-            if (value_store.equals("null")) {
+            if (value.equals("null")) {
                 if (getValue == null) {
                     logger.error(prompt + "Try to delete an entry with non-exist key: " + key);
                     throw new IOException("Try to delete an entry with non-exist key: " + key);
@@ -118,10 +115,10 @@ public class KVIterateStore implements KVPersistentStore {
                 long offset = raf.length();
                 raf.seek(offset);
                 raf.write(stringBytes);
-                logger.info(prompt + "Insert new entry: (" + key + "=" + value_store + ") successfully");
+                logger.info(prompt + "Insert new entry: (" + key + "=" + value + ") successfully");
             } else {
                 this.updateEntry(raf, this.startOffset, this.endOffset, stringBytes);
-                logger.info(prompt + "Modify entry with key: " + key + " (" + getValue + "->" + value_store + ")");
+                logger.info(prompt + "Modify entry with key: " + key + " (" + getValue + "->" + value + ")");
             }
 
         } finally {
@@ -154,7 +151,7 @@ public class KVIterateStore implements KVPersistentStore {
                     raf.close();
                     throw new IOException(prompt + "Invalid Entry found: " + line);
                 }
-                curKey = strs[0];
+                curKey = decodeValue(strs[0]);
                 curValue = strs[1];
 
                 if (curKey.equals(key)) {
@@ -232,7 +229,7 @@ public class KVIterateStore implements KVPersistentStore {
                 byte[] stringBytes = (curKey + "=" + curValue + "\r\n").getBytes("UTF-8");
 
                 // append to move file
-                if (ECSNode.isKeyInRange(curKey, hashRange)){
+                if (ECSNode.isKeyInRange(decodeValue(curKey), hashRange)){
                     long offset = moveRaf.length();
                     moveRaf.seek(offset);
                     moveRaf.write(stringBytes);

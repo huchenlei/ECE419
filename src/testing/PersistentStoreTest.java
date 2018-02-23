@@ -37,6 +37,11 @@ public class PersistentStoreTest extends TestCase {
         value = storeFile.get("hello");
         assertTrue(value.equals("world"));
 
+        // test with unexpected key
+        storeFile.put("woke=shu\raile\n", "no=prob\r\nlem");
+        value = storeFile.get("woke=shu\raile\n");
+        assertTrue(value.equals("no=prob\r\nlem"));
+
         // testing string with \r\n inside
         storeFile.put("wokeshuaile", "no problem\r\n");
         value = storeFile.get("wokeshuaile");
@@ -54,6 +59,10 @@ public class PersistentStoreTest extends TestCase {
         // test delete
         storeFile.put("wokeshuaile", "null");
         value = storeFile.get("wokeshuaile");
+        assertNull(value);
+
+        storeFile.put("woke=shu\raile\n", "null");
+        value = storeFile.get("woke=shu\raile\n");
         assertNull(value);
 
         storeFile.put("hello", "null");
