@@ -17,6 +17,10 @@ public class KVIterateStore implements KVPersistentStore {
     public static String MOVE_SUFFIX = "_move";
     public static String REMAIN_SUFFIX = "_remain";
 
+    private static final String ESCAPER = "-";
+    private static final String DELIM = ESCAPER + ",";
+    private static final String ESCAPED_ESCAPER = ESCAPER + "d";
+
     public KVIterateStore() {
         openFile();
     }
@@ -35,12 +39,12 @@ public class KVIterateStore implements KVPersistentStore {
     private String encodeValue(String value) {
         return value.replaceAll("\r", "\\\\r")
                 .replaceAll("\n", "\\\\n")
-                .replaceAll("=", "\\\\=");
+                .replaceAll(ESCAPER, ESCAPED_ESCAPER);
     }
     private String decodeValue(String value) {
         return value.replaceAll("\\\\r", "\r")
                 .replaceAll("\\\\n", "\n")
-                .replaceAll("\\\\=", "=");
+                .replaceAll(ESCAPED_ESCAPER, ESCAPER);
     }
 
     private void deleteEntry(RandomAccessFile raf, long offset1, long offset2) throws IOException {
@@ -96,7 +100,7 @@ public class KVIterateStore implements KVPersistentStore {
         String getValue = this.get(key);
         key = encodeValue(key);
         // construct an entry string with fixed length
-        byte[] stringBytes = (key + "=" + value + "\r\n").getBytes("UTF-8");
+        byte[] stringBytes = (key + DELIM + value + "\r\n").getBytes("UTF-8");
 
         //modify the storage file
         RandomAccessFile raf = new RandomAccessFile(this.storageFile, "rw");
@@ -146,7 +150,7 @@ public class KVIterateStore implements KVPersistentStore {
                     System.out.println("how could it be");
                     continue;
                 }
-                String[] strs = line.split("(?<!\\\\)=");
+                String[] strs = line.split(DELIM);
                 if (strs.length != 2) {
                     raf.close();
                     throw new IOException(prompt + "Invalid Entry found: " + line);
@@ -219,14 +223,14 @@ public class KVIterateStore implements KVPersistentStore {
                     System.out.println("how could it be");
                     continue;
                 }
-                String[] strs = line.split("(?<!\\\\)=");
+                String[] strs = line.split(DELIM);
                 if (strs.length != 2) {
                     raf.close();
                     throw new IOException(prompt + "Invalid Entry found: " + line);
                 }
                 curKey = strs[0];
                 curValue = strs[1];
-                byte[] stringBytes = (curKey + "=" + curValue + "\r\n").getBytes("UTF-8");
+                byte[] stringBytes = (curKey + DELIM + curValue + "\r\n").getBytes("UTF-8");
 
                 // append to move file
                 if (ECSNode.isKeyInRange(decodeValue(curKey), hashRange)){
