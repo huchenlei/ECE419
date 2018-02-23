@@ -1,10 +1,13 @@
 package testing;
 
 import junit.framework.TestCase;
+import logger.LogSetup;
 import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
 import org.junit.Test;
 import server.KVIterateStore;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -14,8 +17,10 @@ public class PersistentStoreTest extends TestCase {
     private Exception ex;
 
     @Override
-    public void setUp() {
-        BasicConfigurator.configure();
+    public void setUp() throws IOException {
+        if (!LogSetup.isActive()) {
+            new LogSetup("./logs/test_ecs.log", Level.ALL);
+        }
         ex = null;
         storeFile = new KVIterateStore();
     }
