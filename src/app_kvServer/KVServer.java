@@ -83,6 +83,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     }
 
     public KVServer(int port, int cacheSize, String strategy, String fileName) {
+        this.status = ServerStatus.START;
         this.port = port;
         this.cacheSize = cacheSize;
         this.strategy = CacheStrategy.valueOf(strategy);
