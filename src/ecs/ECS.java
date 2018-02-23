@@ -316,7 +316,9 @@ public class ECS implements IECSClient {
 
         if (ret) {
             for (ECSNode n : toRemove) {
-                hashRing.removeNode(n);
+                if (n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
+                    hashRing.removeNode(n);
+
                 n.setStatus(ECSNode.ServerStatus.OFFLINE);
                 nodeTable.remove(n.getNodeName());
             }
