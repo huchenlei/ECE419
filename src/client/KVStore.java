@@ -90,7 +90,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
     		ECSNode newServer = hashRing.getNodeByKey(hash);
     		String addr = newServer.getNodeHost();
     		int pt = newServer.getNodePort();
-    		if (addr == this.address && pt == this.port) {
+    		if (addr.equals(this.address) && pt == this.port) {
     			return;
     		}
     		this.address = addr;
