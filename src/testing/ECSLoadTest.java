@@ -35,13 +35,6 @@ public class ECSLoadTest extends TestCase {
         }
     }
 
-    public void tearDown() throws Exception {
-        super.tearDown();
-        for (KVServer server : serverTable.values()) {
-            server.clearStorage();
-        }
-    }
-
     private static ECS ecs = null;
     private Exception ex = null;
     private static Map<ECSNode, KVServer> serverTable = new HashMap<>();
@@ -102,6 +95,7 @@ public class ECSLoadTest extends TestCase {
             KVServer server = new KVServer(node.getNodePort(), node.getNodeName(),
                     ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT));
             serverTable.put((ECSNode) node, server);
+            server.clearStorage();
             new Thread(server).start();
         }
 

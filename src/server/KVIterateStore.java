@@ -209,17 +209,15 @@ public class KVIterateStore implements KVPersistentStore {
             moveFile.createNewFile();
             remainFile.createNewFile();
 
-            RandomAccessFile raf = new RandomAccessFile(this.storageFile, "r");
             RandomAccessFile moveRaf = new RandomAccessFile(moveFile, "rw");
             RandomAccessFile remainRaf = new RandomAccessFile(remainFile, "rw");
+            BufferedReader raf = new BufferedReader(new FileReader(this.storageFile));
 
             // read original file line by line
             String line, curKey, curValue;
             while ((line = raf.readLine()) != null) {
                 // convert line from ISO to UTF-8
                 line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
-                this.startOffset = this.endOffset;
-                this.endOffset = raf.getFilePointer();
                 if (line.isEmpty()) {
                     System.out.println("how could it be");
                     continue;
@@ -255,7 +253,6 @@ public class KVIterateStore implements KVPersistentStore {
         } catch (IOException e) {
             logger.error(prompt + "Unable to create move and remain file", e);
         }
-
 
     }
 

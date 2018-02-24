@@ -17,12 +17,17 @@ public class PersistentStoreTest extends TestCase {
     private Exception ex;
 
     @Override
-    public void setUp() {
+    public void setUp() throws Exception {
 //        BasicConfigurator.configure();
+//        super.setUp();
+//        if (!LogSetup.isActive()) {
+//            new LogSetup("./logs/test_ecs.log", Level.ALL);
+//        }
 
         ex = null;
         storeFile = new KVIterateStore();
     }
+
 
     @Test
     public void testPutGet() throws Exception {

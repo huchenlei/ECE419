@@ -184,6 +184,9 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, new Watcher() {
                 // handle hashRing update
                 public void process(WatchedEvent we) {
+                    if (!running){
+                        return;
+                    }
                     try {
                         byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, this, null);
                         hashRingString = new String(hashRingData);
@@ -238,6 +241,9 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public void process(WatchedEvent event) {
+        if (!running) {
+            return;
+        }
         List<String> children = null;
         try {
             children = zk.getChildren(zkPath, false, null);
@@ -320,13 +326,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 case START:
                     this.start();
                     zk.delete(path, zk.exists(path, false).getVersion());
-                    logger.info(prompt() + "Server started.");
                     break;
 
                 case STOP:
                     this.stop();
                     zk.delete(path, zk.exists(path, false).getVersion());
-                    logger.info(prompt() + "Server stopped.");
                     break;
 
             }
@@ -523,9 +527,9 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             senderMetaData.setTransferProgress(transferProgress);
 
             rawSenderMetaData = new Gson().toJson(senderMetaData).getBytes();
-            zk.setData(zkPath, rawSenderMetaData,
+            Stat stat = zk.setData(zkPath, rawSenderMetaData,
                     zk.exists(zkPath, false).getVersion());
-            logger.debug("Update TransferProgress: " + transferProgress);
+            logger.debug(prompt() + "Update TransferProgress: " + transferProgress);
 
         } catch (InterruptedException | KeeperException e) {
             logger.debug(prompt() + "Unable to update progress");
@@ -544,6 +548,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             File moveFile = new File(moveFileName);
             long fileLength = moveFile.length();
 
+            logger.debug(prompt() + "fileLength: " + fileLength);
             byte[] buffer = new byte[BUFFER_SIZE];
             Socket clientSocket = new Socket(targetHost, targetPort);
             BufferedOutputStream out = new BufferedOutputStream(clientSocket.getOutputStream());
@@ -555,6 +560,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             while ((len = in.read(buffer)) > 0) {
                 // update percentage
                 progress = (int) ((float) totalLength / (float) fileLength * 100.0);
+                logger.debug(prompt() + "totalLength: " + totalLength);
                 // write into zookeeper
                 updateTransferProgress(progress);
 
@@ -604,6 +610,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 }
             }
         }
+        logger.info(prompt() + "Server shutdown successfully");
     }
 
     public boolean isRunning() {

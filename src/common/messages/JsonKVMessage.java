@@ -47,8 +47,8 @@ public class JsonKVMessage extends AbstractKVMessage {
     public String toString() {
         return "JsonKVMessage{" +
                 "key='" + key + '\'' +
-                ", value='" + value + '\'' +
                 ", status=" + status +
+                ", value='" + value + '\'' +
                 '}';
     }
 }

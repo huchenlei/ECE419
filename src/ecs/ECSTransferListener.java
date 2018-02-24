@@ -15,7 +15,7 @@ public class ECSTransferListener implements Watcher {
     // total timeout 2 hours
     public static final Integer MAX_TIMEOUT = 2 * 3600 * 1000;
     // 2s between 2 updates
-    public static final Integer TIMEOUT = 2 * 1000;
+    public static final Integer TIMEOUT = 10 * 1000;
 
     private static Logger logger = Logger.getRootLogger();
     private ZooKeeper zk;
@@ -25,8 +25,8 @@ public class ECSTransferListener implements Watcher {
     private boolean senderComplete = false;
     private boolean receiverComplete = false;
 
-    private Integer senderProgress = 0;
-    private Integer receiverProgress = 0;
+    private Integer senderProgress = -1;
+    private Integer receiverProgress = -1;
 
     private String prompt;
 
