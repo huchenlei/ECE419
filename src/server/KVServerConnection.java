@@ -74,20 +74,21 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
             res.setStatus(KVMessage.StatusType.SERVER_STOPPED);
             return res;
         }
+
+        ECSHashRing hashRing = ((KVServer)kvServer).getHashRing();
+        if (hashRing != null){
+            ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
+            if (node != null) {
+                if (!node.getNodeName().equals(((KVServer)kvServer).getServerName())) {
+                    res.setValue(((KVServer)kvServer).getHashRingString());
+                    res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
+                    return res;
+                }
+            }
+        }
+        
         switch (m.getStatus()) {
             case GET: {
-
-                ECSHashRing hashRing = ((KVServer)kvServer).getHashRing();
-                if (hashRing != null){
-                    ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
-                    if (node != null) {
-                        if (!node.getNodeName().equals(((KVServer)kvServer).getServerName())) {
-                            res.setValue(((KVServer)kvServer).getHashRingString());
-                            res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
-                            return res;
-                        }
-                    }
-                }
 
                 Exception ex = null;
                 String value = null;
@@ -107,6 +108,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
             }
 
             case PUT: {
+
                 // if server locked, it can not handle put request
                 if (kvServer.getStatus().equals(IKVServer.ServerStatus.LOCK)){
                     res.setValue("");
