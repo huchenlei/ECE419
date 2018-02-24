@@ -15,6 +15,7 @@ import java.net.Socket;
 public class KVStore extends AbstractKVConnection implements KVCommInterface {
     private String address;
     private int port;
+    private int detect;
     private String hashRingString;
     private ECSHashRing hashRing;
 
@@ -28,7 +29,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         this.address = address;
         this.port = port;
         this.open = true;
-        this.hashRing = new ECSHashRing();
+        this.detect = 0;
     }
 
     @Override
@@ -55,6 +56,10 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         req.setKey(key);
         req.setValue(value);
         req.setStatus(KVMessage.StatusType.PUT);
+        //if metadata is not null, find the server responsible for the key
+        if (this.detect == 1) {
+        		reconnect(req);
+        }
         sendMessage(new TextMessage(req.encode()));
         res.decode(receiveMessage().getMsg());
         res = handleNotResponsible(req, res);
@@ -70,16 +75,36 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         req.setKey(key);
         req.setValue("");
         req.setStatus(KVMessage.StatusType.GET);
+        //if metadata is not null, find the server responsible for the key
+        if (this.detect == 1) {
+    			reconnect(req);
+        }
         sendMessage(new TextMessage(req.encode()));
         res.decode(receiveMessage().getMsg());
         res = handleNotResponsible(req, res);
         return res;
     }
+    
+    private void reconnect(KVMessage req) throws Exception{
+    		String hash = ECSNode.calcHash(req.getKey());
+    		ECSNode newServer = hashRing.getNodeByKey(hash);
+    		String addr = newServer.getNodeHost();
+    		int pt = newServer.getNodePort();
+    		if (addr == this.address && pt == this.port) {
+    			return;
+    		}
+    		this.address = addr;
+    		this.port = pt;
+    		disconnect();
+    		connect();
+    }
 
     private KVMessage handleNotResponsible(KVMessage req, KVMessage res) throws Exception {
         if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
+        		
             hashRingString = res.getValue();
             hashRing = new ECSHashRing(hashRingString);
+            this.detect = 1;
             String hash = ECSNode.calcHash(res.getKey());
             ECSNode newServer = hashRing.getNodeByKey(hash);
 
@@ -104,7 +129,10 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
 
     private KVMessage resendRequest(String key, String value, KVMessage.StatusType request) throws Exception {
 
-        disconnect();
+    		disconnect();
+        logger.info("used for debugs");
+        logger.info(this.address);
+        logger.info(this.port);
         connect();
         if (request.equals(KVMessage.StatusType.PUT)) {
             return this.put(key, value);
