@@ -109,6 +109,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         this.store = new KVIterateStore(fileName);
     }
 
+    public KVServer(Integer port, String name, String zkHostName, int zkPort) {
+        this(name, zkHostName, zkPort);
+        this.port = port;
+    }
+
     public KVServer(String name, String zkHostName, int zkPort) {
         this.zkHostName = zkHostName;
         this.serverName = name;
@@ -639,8 +644,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                         args[2]
                 )).start();
             } else {
-                KVServer server = new KVServer(args[1], args[2], Integer.parseInt(args[3]));
-                server.port = Integer.parseInt(args[0]);
+                KVServer server = new KVServer(Integer.parseInt(args[0]), args[1], args[2], Integer.parseInt(args[3]));
                 new Thread(server).start();
             }
         } catch (NumberFormatException nfe) {

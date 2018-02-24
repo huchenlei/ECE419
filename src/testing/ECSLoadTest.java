@@ -99,7 +99,8 @@ public class ECSLoadTest extends TestCase {
         assertEquals(count, new Integer(nodes.size()));
         // Start the servers internally
         for (IECSNode node : nodes) {
-            KVServer server = new KVServer(node.getNodeName(), ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT));
+            KVServer server = new KVServer(node.getNodePort(), node.getNodeName(),
+                    ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT));
             serverTable.put((ECSNode) node, server);
             new Thread(server).start();
         }

@@ -46,7 +46,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     sendMessage(new TextMessage(res.encode()));
                 } catch (IOException ioe) {
                     logger.error("Connection lost (" + this.clientSocket.getInetAddress().getHostName()
-                            +  ": " + this.clientSocket.getPort() + ")!");
+                            + ": " + this.clientSocket.getPort() + ")!");
                     this.open = false;
                 }
             }
@@ -69,7 +69,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         res.setKey(m.getKey());
 
         // stopped server can not handle any request
-        if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)){
+        if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)) {
             res.setValue("");
             res.setStatus(KVMessage.StatusType.SERVER_STOPPED);
             return res;
@@ -98,7 +98,11 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     ex = e;
                 }
                 if (ex != null || value == null) {
-                    res.setValue("");
+                    if (ex != null)
+                        res.setValue(ex.getMessage());
+                    else
+                        res.setValue("Key not found on server " + ((KVServer) kvServer).getServerName());
+
                     res.setStatus(KVMessage.StatusType.GET_ERROR);
                 } else {
                     res.setValue(value);
@@ -110,7 +114,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
             case PUT: {
 
                 // if server locked, it can not handle put request
-                if (kvServer.getStatus().equals(IKVServer.ServerStatus.LOCK)){
+                if (kvServer.getStatus().equals(IKVServer.ServerStatus.LOCK)) {
                     res.setValue("");
                     res.setStatus(KVMessage.StatusType.SERVER_WRITE_LOCK);
                     return res;
@@ -123,11 +127,11 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
                 if ("".equals(m.getKey()) ||
                         "".equals(m.getValue()) ||
-                    // Empty string is not allowed as key or value on server side
-                    // Value of empty string is supposed to be converted to "null" at the client side
+                        // Empty string is not allowed as key or value on server side
+                        // Value of empty string is supposed to be converted to "null" at the client side
 //                        m.getKey().matches(".*\\s.*") ||
 //                        m.getValue().matches(".*\\s.*") ||
-                    // The key or value can not contain any white space characters such as '\t', ' ' or '\n'
+                        // The key or value can not contain any white space characters such as '\t', ' ' or '\n'
                         m.getKey().length() > KVServer.MAX_KEY ||
                         m.getValue().length() > KVServer.MAX_VAL
                     // The key or value can not exceed designated length
