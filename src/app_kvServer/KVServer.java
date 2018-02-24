@@ -523,6 +523,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             rawSenderMetaData = new Gson().toJson(senderMetaData).getBytes();
             zk.setData(zkPath, rawSenderMetaData,
                     zk.exists(zkPath, false).getVersion());
+            logger.debug("Update TransferProgress: " + transferProgress);
 
         } catch (InterruptedException | KeeperException e) {
             logger.debug(prompt() + "Unable to update progress");
@@ -554,14 +555,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 progress = (int) ((float) totalLength / (float) fileLength * 100.0);
                 // write into zookeeper
                 updateTransferProgress(progress);
-                logger.debug(prompt() + "TransferProgress: " + progress);
 
                 out.write(buffer, 0, len);
                 totalLength += len;
             }
 
             updateTransferProgress(100);
-            logger.debug(prompt() + "TransferProgress: " + progress);
+
             updateTransferProgress(progress);
             in.close();
             out.flush();
