@@ -85,7 +85,8 @@ public class ECSBasicTest extends TestCase {
         // Start the servers internally
         for (IECSNode node : nodes) {
             new Thread(
-                    new KVServer(node.getNodeName(), ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT)))
+                    new KVServer(node.getNodePort(), node.getNodeName(),
+                            ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT)))
                     .start();
         }
 

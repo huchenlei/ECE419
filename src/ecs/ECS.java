@@ -194,6 +194,7 @@ public class ECS implements IECSClient {
             String javaCmd = String.join(" ",
                     "java -jar",
                     JAR_PATH,
+                    String.valueOf(n.getNodePort()),
                     n.getNodeName(),
                     ZK_HOST,
                     ZK_PORT);
