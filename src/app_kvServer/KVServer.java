@@ -486,11 +486,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public void start() {
+        logger.info(prompt() + "Server started");
         this.status = ServerStatus.START;
     }
 
     @Override
     public void stop() {
+        logger.info(prompt() + "Server stoped");
         this.status = ServerStatus.STOP;
     }
 
