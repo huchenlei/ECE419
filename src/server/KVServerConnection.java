@@ -68,23 +68,28 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         assert res != null;
         res.setKey(m.getKey());
 
+        ECSHashRing hashRing = ((KVServer) kvServer).getHashRing();
         // stopped server can not handle any request
-        if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)) {
+        if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)
+                || hashRing.empty()) {
             res.setValue("");
             res.setStatus(KVMessage.StatusType.SERVER_STOPPED);
             return res;
         }
 
-        ECSHashRing hashRing = ((KVServer) kvServer).getHashRing();
-        if (hashRing != null) {
-            ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
-            assert node != null;
-            if (!node.getNodeName().equals(((KVServer) kvServer).getServerName())) {
-                res.setValue(((KVServer) kvServer).getHashRingString());
-                res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
-                return res;
-            }
+
+        ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
+        if (node == null) {
+            logger.error("HashRing: " + hashRing);
         }
+
+        assert node != null;
+        if (!node.getNodeName().equals(((KVServer) kvServer).getServerName())) {
+            res.setValue(((KVServer) kvServer).getHashRingString());
+            res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
+            return res;
+        }
+
 
         switch (m.getStatus()) {
             case GET: {

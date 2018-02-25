@@ -122,6 +122,7 @@ public class ECSLoadTest extends TestCase {
     public void test03StartNodes() throws Exception {
         boolean ret = ecs.start();
         assertTrue(ret);
+        Thread.sleep(100); // wait for server to init hashRing
     }
 
     /**

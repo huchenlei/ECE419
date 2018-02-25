@@ -180,6 +180,10 @@ public class ECSHashRing {
         return sb.toString();
     }
 
+    public boolean empty() {
+        return this.root == null;
+    }
+
     public class HashRingException extends RuntimeException {
         public HashRingException(String msg) {
             super(msg);
