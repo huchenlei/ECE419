@@ -627,9 +627,9 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             this.port = serverSocket.getLocalPort();
             return true;
         } catch (IOException e) {
-            logger.debug(prompt() + "Error! Cannot open server socket:");
+            logger.error(prompt() + "Error! Cannot open server socket:");
             if (e instanceof BindException) {
-                logger.debug(prompt() + "Port " + port + " is already bound!");
+                logger.error(prompt() + "Port " + port + " is already bound!");
             }
             return false;
         }

@@ -159,7 +159,7 @@ public class ECS implements IECSClient {
     public boolean shutdown() throws Exception {
         ECSMulticaster multicaster = new ECSMulticaster(zk, nodeTable.values()
                 .stream().map((n) -> (ECSNode) n).collect(Collectors.toList()));
-        boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.STOP));
+        boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
         if (ret) {
             hashRing.removeAll();
             nodeTable.values()
