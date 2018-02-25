@@ -81,6 +81,11 @@ public class ECSTransferListener implements Watcher {
     private void checkReceiver() throws KeeperException, InterruptedException {
         ServerMetaData recvData = parseServerData(
                 zk.getData(ECS.getNodePath(receiver), false, null));
+        if (receiverProgress.equals(recvData.getTransferProgress())) {
+            zk.exists(ECS.getNodePath(receiver), this);
+            return;
+        }
+
         receiverProgress = recvData.getTransferProgress();
         if (recvData.isIdle()) {
             receiverComplete = true;
@@ -95,8 +100,13 @@ public class ECSTransferListener implements Watcher {
         // Monitor sender
         byte[] data = zk.getData(ECS.getNodePath(sender), false, null);
         ServerMetaData metadata = parseServerData(data);
+        if (senderProgress.equals(metadata.getTransferProgress())) {
+            zk.exists(ECS.getNodePath(sender), this);
+            return;
+        }
         senderProgress = metadata.getTransferProgress();
         logger.info(prompt + senderProgress + "%");
+
 
         if (metadata.isIdle()) {
             // Sender complete, now monitoring receiver
