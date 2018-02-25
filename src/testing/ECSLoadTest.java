@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static testing.ECSLoadTest.TestHelper.addNodes;
 import static testing.ECSLoadTest.TestHelper.getRandomClient;
 import static testing.ECSLoadTest.TestHelper.testGetData;
 
@@ -26,7 +27,7 @@ import static testing.ECSLoadTest.TestHelper.testGetData;
 public class ECSLoadTest extends TestCase {
     private static Logger logger = Logger.getRootLogger();
     private static final String CACHE_STRATEGY = "FIFO";
-    private static final Integer CACHE_SIZE = 1024;
+    private static final Integer CACHE_SIZE = 32;
 
     public void setUp() throws Exception {
         super.setUp();
@@ -62,6 +63,22 @@ public class ECSLoadTest extends TestCase {
                 assertEquals(msg.getValue(), ret.getValue());
             }
         }
+
+        static void addNodes(Integer count) throws Exception {
+            Collection<IECSNode> nodes = ecs.setupNodes(count, CACHE_STRATEGY, CACHE_SIZE);
+            assertNotNull(nodes);
+            assertEquals(count, new Integer(nodes.size()));
+            // Start the servers internally
+            for (IECSNode node : nodes) {
+                KVServer server = new KVServer(node.getNodePort(), node.getNodeName(),
+                        ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT));
+                serverTable.put((ECSNode) node, server);
+                server.clearStorage();
+                new Thread(server).start();
+            }
+            boolean ret = ecs.awaitNodes(count, ECS.ZK_TIMEOUT);
+            assertTrue(ret);
+        }
     }
 
     @Before
@@ -86,22 +103,7 @@ public class ECSLoadTest extends TestCase {
      * Add several nodes to ECS
      */
     public void test02AddNodes() throws Exception {
-        Integer count = 5;
-        Collection<IECSNode> nodes = ecs.setupNodes(count, CACHE_STRATEGY, CACHE_SIZE);
-        assertNotNull(nodes);
-        assertEquals(count, new Integer(nodes.size()));
-        // Start the servers internally
-        for (IECSNode node : nodes) {
-            KVServer server = new KVServer(node.getNodePort(), node.getNodeName(),
-                    ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT));
-            serverTable.put((ECSNode) node, server);
-            server.clearStorage();
-            new Thread(server).start();
-        }
-
-        boolean ret = ecs.awaitNodes(count, ECS.ZK_TIMEOUT);
-        assertTrue(ret);
-
+        addNodes(5);
         for (KVServer server : serverTable.values()) {
             KVStore store = new KVStore(server.getHostname(), server.getPort());
             store.connect();
@@ -141,9 +143,12 @@ public class ECSLoadTest extends TestCase {
     public void test05RemoveNodes() throws Exception {
         ArrayList<ECSNode> nodes = new ArrayList<>(serverTable.keySet());
         // Remove the first two nodes
-        ecs.removeNodes(
-                nodes.subList(0, 1).stream().map(ECSNode::getNodeName)
+        List<ECSNode> toRemove = nodes.subList(0, 2);
+        boolean ret = ecs.removeNodes(
+                toRemove.stream().map(ECSNode::getNodeName)
                         .collect(Collectors.toList()));
+        assertTrue(ret);
+        toRemove.forEach(serverTable::remove);
         testGetData();
     }
 
@@ -169,7 +174,21 @@ public class ECSLoadTest extends TestCase {
     /**
      * Add nodes when there is existing service online
      */
-    public void test07AddNodesExisting() {
+    public void test07AddNodesExisting() throws Exception {
+        Collection<IECSNode> nodes =
+                ecs.addNodes(2, CACHE_STRATEGY, CACHE_SIZE);
+        assertNotNull(nodes);
+        assertTrue(nodes.size() == 2);
 
+        testGetData();
+    }
+
+
+    /**
+     * Shutdown the whole service
+     */
+    public void test08Shutdown() throws Exception {
+        boolean ret = ecs.shutdown();
+        assertTrue(ret);
     }
 }
