@@ -103,7 +103,7 @@ public class ECSTransferListener implements Watcher {
             logger.info(prompt + "sender side complete");
             checkReceiver();
         } else {
-            // Continue listing for sender progress
+            // Continue listening for sender progress
             zk.exists(ECS.getNodePath(sender), this);
             if (sig != null) sig.countDown();
         }

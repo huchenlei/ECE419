@@ -2,6 +2,8 @@ package common.messages;
 
 import com.google.gson.Gson;
 
+import java.util.Arrays;
+
 public class KVAdminMessage implements Encodable, Decodable {
     public enum OperationType {
         INIT, // Used by awaitNodes
@@ -66,5 +68,15 @@ public class KVAdminMessage implements Encodable, Decodable {
 
     public void setHashRange(String[] hashRange) {
         this.hashRange = hashRange;
+    }
+
+    @Override
+    public String toString() {
+        return "KVAdminMessage{" +
+                "operationType=" + operationType +
+                ", receiverName='" + receiverName + '\'' +
+                ", receiverHost='" + receiverHost + '\'' +
+                ", hashRange=" + Arrays.toString(hashRange) +
+                '}';
     }
 }

@@ -25,6 +25,8 @@ public class ECSMulticaster implements Watcher {
 
     private static long timestamp = 0;
 
+    private String logMsg;
+
     public ECSMulticaster(ZooKeeper zk, Collection<ECSNode> nodes) {
         this.zk = zk;
         this.nodes = nodes;
@@ -34,6 +36,7 @@ public class ECSMulticaster implements Watcher {
     }
 
     public boolean send(KVAdminMessage msg) throws InterruptedException {
+        logMsg = "Receive node deletion, message receive confirmed " + msg;
         for (ECSNode n : nodes) {
             String msgPath = ECS.getNodePath(n) + "/message" + timestamp;
             timestamp++;
@@ -43,7 +46,7 @@ public class ECSMulticaster implements Watcher {
                 Stat exists = zk.exists(msgPath, this);
                 if (exists == null) {
                     sig.countDown();
-                    logger.debug("Receive node deletion, message received");
+                    logger.debug(logMsg);
                 }
             } catch (KeeperException e) {
                 errors.put(n, "issue encountered create msg node " + msgPath +
@@ -82,7 +85,7 @@ public class ECSMulticaster implements Watcher {
         switch (event.getType()) {
             case NodeDeleted:
                 // The message is received and properly handled by the server
-                logger.debug("Receive node deletion, message received");
+                logger.debug(logMsg);
                 break;
             case NodeDataChanged:
                 try {
