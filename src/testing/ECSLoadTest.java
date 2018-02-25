@@ -175,11 +175,7 @@ public class ECSLoadTest extends TestCase {
      * Add nodes when there is existing service online
      */
     public void test07AddNodesExisting() throws Exception {
-        Collection<IECSNode> nodes =
-                ecs.addNodes(2, CACHE_STRATEGY, CACHE_SIZE);
-        assertNotNull(nodes);
-        assertTrue(nodes.size() == 2);
-
+        addNodes(2);
         testGetData();
     }
 
