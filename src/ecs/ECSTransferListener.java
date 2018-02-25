@@ -54,8 +54,8 @@ public class ECSTransferListener implements Watcher {
         }
 
         while (true) {
-            Integer ps = senderProgress;
-            Integer pr = receiverProgress;
+            Integer psender = senderProgress;
+            Integer preciver = receiverProgress;
 
             sig = new CountDownLatch(1);
             sig.await(TIMEOUT, TimeUnit.MILLISECONDS);
@@ -63,7 +63,8 @@ public class ECSTransferListener implements Watcher {
             if (senderComplete && receiverComplete) {
                 // Complete
                 return true;
-            } else if (receiverProgress.equals(ps) && senderProgress.equals(pr)) {
+            } else if (receiverProgress.equals(preciver)
+                    && senderProgress.equals(psender)) {
                 // No data change
                 // Must be a timeout
                 logger.error("TIMEOUT triggered before receiving any progress on data transferring");

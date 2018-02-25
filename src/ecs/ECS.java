@@ -435,6 +435,7 @@ public class ECS implements IECSClient {
 
     private ECSNode findNextNodeAvailable(ECSNode node, Predicate<ECSNode> condition) {
         ECSNode dest = node;
+        Integer loopCounter = 0;
         while (true) {
             // Get next node on HashRing
             dest = hashRing.getNextNode(dest);
@@ -443,6 +444,10 @@ public class ECS implements IECSClient {
             if (dest.equals(node)) {
                 // HashRing exhausted
                 return null;
+            }
+            loopCounter++;
+            if (loopCounter > 2 * hashRing.getSize()) {
+                throw new ECSHashRing.HashRingException(ECSHashRing.LOOP_ERROR_STR);
             }
         }
     }

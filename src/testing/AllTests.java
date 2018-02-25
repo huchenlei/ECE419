@@ -30,16 +30,15 @@ public class AllTests {
     public static Test suite() {
         TestSuite clientSuite = new TestSuite("Basic Storage ServerTest-Suite");
         List<Class<? extends TestCase>> tests = Arrays.asList(
-                ECSBasicTest.class,
-                ECSLoadTest.class,
-
                 ConnectionTest.class,
                 InteractionTest.class,
                 FIFOCacheTest.class,
                 LFUCacheTest.class,
                 LRUCacheTest.class,
                 PersistentStoreTest.class,
-                HashRingTest.class
+                HashRingTest.class,
+                ECSBasicTest.class,
+                ECSLoadTest.class
         );
         for (Class<? extends TestCase> test :
                 tests) {

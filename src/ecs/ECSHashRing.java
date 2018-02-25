@@ -16,8 +16,12 @@ public class ECSHashRing {
     private Logger logger = Logger.getRootLogger();
     private ECSNode root = null;
     private Integer size = 0;
-    private static final String LOOP_ERROR_STR =
+    public static final String LOOP_ERROR_STR =
             "Mal-formed structure detected; potentially causing infinite loop";
+
+    public Integer getSize() {
+        return size;
+    }
 
     public ECSHashRing() {
     }
@@ -207,7 +211,7 @@ public class ECSHashRing {
         return this.root == null;
     }
 
-    public class HashRingException extends RuntimeException {
+    public static class HashRingException extends RuntimeException {
         public HashRingException(String msg) {
             super(msg);
         }
