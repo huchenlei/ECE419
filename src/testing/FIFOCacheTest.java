@@ -13,7 +13,6 @@ public class FIFOCacheTest extends TestCase {
     @Override
     public void setUp() {
         ex = null;
-        BasicConfigurator.configure();
         fifoCache = new KVFIFOCache(3);
     }
 
