@@ -174,7 +174,7 @@ public class ECSHashRing {
                 throw new HashRingException(LOOP_ERROR_STR);
             }
         }
-
+        size = 0;
         root = null;
     }
 
