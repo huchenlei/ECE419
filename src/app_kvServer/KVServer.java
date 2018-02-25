@@ -600,6 +600,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 try {
                     Socket client = serverSocket.accept();
                     KVServerConnection conn = new KVServerConnection(this, client);
+                    conn.setPrompt(this.serverName);
                     new Thread(conn).start();
 
                     logger.info(prompt() + "Connected to "

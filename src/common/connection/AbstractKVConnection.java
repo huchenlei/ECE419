@@ -20,11 +20,15 @@ public abstract class AbstractKVConnection implements KVConnection {
     protected OutputStream output;
 
     protected static Logger logger = Logger.getRootLogger();
-    private static final int BUFFER_SIZE = 1024;
-    private static final int DROP_SIZE = 128 * BUFFER_SIZE;
 
     public boolean isOpen() {
         return open;
+    }
+
+    private String prompt = "NO-NAME";
+
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
     }
 
     public void disconnect() {
@@ -46,10 +50,6 @@ public abstract class AbstractKVConnection implements KVConnection {
         byte[] msgBytes = msg.getMsgBytes();
         output.write(msgBytes, 0, msgBytes.length);
         output.flush();
-        logger.info("SEND \t<"
-                + clientSocket.getInetAddress().getHostAddress() + ":"
-                + clientSocket.getPort() + ">: '"
-                + msg.getMsg() + "'");
     }
 
     @Override
@@ -75,10 +75,10 @@ public abstract class AbstractKVConnection implements KVConnection {
         TextMessage msg = new TextMessage(msgBytes);
 
         //handle the empty input issue, happened when disconnect without sending KVMessage
-        if (msg.getMsg().matches("[\\n\\r]+")){
+        if (msg.getMsg().matches("[\\n\\r]+")) {
             throw new IOException("Received an empty message");
         }
-        logger.info("RECEIVE \t<"
+        logger.info("(" + prompt + ")RECEIVE <"
                 + clientSocket.getInetAddress().getHostAddress() + ":"
                 + clientSocket.getPort() + ">: '"
                 + msg.getMsg().trim() + "'");
