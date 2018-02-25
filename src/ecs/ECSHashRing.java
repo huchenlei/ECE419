@@ -15,6 +15,9 @@ import java.util.List;
 public class ECSHashRing {
     private Logger logger = Logger.getRootLogger();
     private ECSNode root = null;
+    private Integer size = 0;
+    private static final String LOOP_ERROR_STR =
+            "Mal-formed structure detected; potentially causing infinite loop";
 
     public ECSHashRing() {
     }
@@ -47,6 +50,8 @@ public class ECSHashRing {
         BigInteger k = new BigInteger(key, 16);
         ECSNode currentNode = root;
         if (root == null) return null;
+        Integer loopCounter = 0;
+
         while (true) {
             String[] hashRange = currentNode.getNodeHashRange();
             assert hashRange != null;
@@ -65,6 +70,9 @@ public class ECSHashRing {
                 }
             }
             currentNode = currentNode.getPrev();
+
+            if (loopCounter > 2 * size)
+                throw new HashRingException(LOOP_ERROR_STR);
         }
         return currentNode;
     }
@@ -106,6 +114,7 @@ public class ECSHashRing {
             node.setPrev(prev);
             loc.setPrev(node);
         }
+        this.size++;
     }
 
     public void removeNode(ECSNode node) {
@@ -131,6 +140,8 @@ public class ECSHashRing {
         if (toRemove.equals(next) && root.getNodeHash().equals(hash)) {
             // remove the last element in hash ring
             root = null;
+            size--;
+            assert size == 0;
             return;
         } else if ((toRemove.equals(next) && !root.getNodeHash().equals(hash))
                 || !(next.getPrev().equals(toRemove))) {
@@ -142,6 +153,7 @@ public class ECSHashRing {
         if (root.equals(toRemove)) {
             root = next;
         }
+        this.size--;
     }
 
     /**
@@ -151,10 +163,16 @@ public class ECSHashRing {
         if (root == null) return;
 
         ECSNode currentNode = root;
+        Integer loopCounter = 0;
         while (currentNode != null) {
             ECSNode prev = currentNode.getPrev();
             currentNode.setPrev(null);
             currentNode = prev;
+            loopCounter++;
+
+            if (loopCounter > 2 * size) {
+                throw new HashRingException(LOOP_ERROR_STR);
+            }
         }
 
         root = null;
@@ -169,12 +187,17 @@ public class ECSHashRing {
         sb.append("ECSHashRing{\n");
 
         ECSNode currentNode = root;
+        Integer loopCounter = 0;
         while (true) {
             sb.append(currentNode);
             sb.append("\n");
             currentNode = currentNode.getPrev();
             if (currentNode.equals(root))
                 break;
+
+            loopCounter++;
+            if (loopCounter > 2 * size)
+                throw new HashRingException(LOOP_ERROR_STR);
         }
         sb.append("}");
         return sb.toString();

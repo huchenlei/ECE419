@@ -168,6 +168,7 @@ public class ECSLoadTest extends TestCase {
         // restart the servers should recover the service
         ret = ecs.start();
         assertTrue(ret);
+        Thread.sleep(100);
 
         testGetData();
     }
