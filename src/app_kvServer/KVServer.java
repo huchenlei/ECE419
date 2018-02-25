@@ -569,8 +569,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             }
 
             updateTransferProgress(100);
-
-            updateTransferProgress(progress);
             in.close();
             out.flush();
             out.close();
