@@ -178,6 +178,7 @@ public class ECSLoadTest extends TestCase {
      */
     public void test07AddNodesExisting() throws Exception {
         addNodes(2);
+        ecs.start();
         testGetData();
     }
 

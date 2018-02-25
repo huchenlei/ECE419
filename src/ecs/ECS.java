@@ -114,6 +114,9 @@ public class ECS implements IECSClient {
                 toStart.add(n);
             }
         }
+        for (ECSNode n : toStart) {
+            hashRing.addNode(n);
+        }
 
         rearrangeDataStorage(toStart);
 
@@ -121,11 +124,12 @@ public class ECS implements IECSClient {
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.START));
 
         for (ECSNode n : toStart) {
-            if (!multicaster.getErrors().keySet().contains(n)) {
-                hashRing.addNode(n);
+            if (multicaster.getErrors().keySet().contains(n)) {
+                hashRing.removeNode(n);
+            } else {
+                n.setStatus(ECSNode.ServerStatus.ACTIVE);
             }
         }
-        toStart.forEach(n -> n.setStatus(ECSNode.ServerStatus.ACTIVE));
 
         updateMetadata();
         return ret;
