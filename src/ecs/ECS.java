@@ -407,6 +407,10 @@ public class ECS implements IECSClient {
                 // Its data transferring to "next" server available
                 ECSNode dest = findNextNodeAvailable(node, n -> !removeSet.contains(n));
                 if (dest != null) {
+                    logger.debug("Transferring data\nfrom: " + node + "\nto: " +
+                            dest);
+                    logger.debug("HashRange: " + node.getNodeHashRange()[0] + " -> "
+                            + node.getNodeHashRange()[1]);
                     transferData(node, dest, node.getNodeHashRange());
                 } else {
                     logger.warn("No server available to accept data from the deletion of node " + node);

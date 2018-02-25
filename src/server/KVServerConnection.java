@@ -75,18 +75,17 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
             return res;
         }
 
-        ECSHashRing hashRing = ((KVServer)kvServer).getHashRing();
-        if (hashRing != null){
+        ECSHashRing hashRing = ((KVServer) kvServer).getHashRing();
+        if (hashRing != null) {
             ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
-            if (node != null) {
-                if (!node.getNodeName().equals(((KVServer)kvServer).getServerName())) {
-                    res.setValue(((KVServer)kvServer).getHashRingString());
-                    res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
-                    return res;
-                }
+            assert node != null;
+            if (!node.getNodeName().equals(((KVServer) kvServer).getServerName())) {
+                res.setValue(((KVServer) kvServer).getHashRingString());
+                res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
+                return res;
             }
         }
-        
+
         switch (m.getStatus()) {
             case GET: {
 

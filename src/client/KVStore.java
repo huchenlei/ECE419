@@ -49,31 +49,31 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
 
     @Override
     public KVMessage put(String key, String value) throws Exception {
-    		
-    		if ("".equals(value)) {
-    			value = "null";
-    		}
-    		KVMessage req = AbstractKVMessage.createMessage();
-    		KVMessage res = AbstractKVMessage.createMessage();
-    		assert res != null;
-    		assert req != null;
-    		req.setKey(key);
-    		req.setValue(value);
-    		req.setStatus(KVMessage.StatusType.PUT);
-    		try {
-    			//if metadata is not null, find the server responsible for the key
-    			reconnect(req);
-    			sendMessage(new TextMessage(req.encode()));
-    			res.decode(receiveMessage().getMsg());
-    			res = handleNotResponsible(req, res);
-    			return res;
-    		} catch (IOException e) {
-    			res = handleShutdown(req);
-    			if ( res == null) {
-    				System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
-    			}
-    			return res;
-    		}
+
+        if ("".equals(value)) {
+            value = "null";
+        }
+        KVMessage req = AbstractKVMessage.createMessage();
+        KVMessage res = AbstractKVMessage.createMessage();
+        assert res != null;
+        assert req != null;
+        req.setKey(key);
+        req.setValue(value);
+        req.setStatus(KVMessage.StatusType.PUT);
+        try {
+            //if metadata is not null, find the server responsible for the key
+            reconnect(req);
+            sendMessage(new TextMessage(req.encode()));
+            res.decode(receiveMessage().getMsg());
+            res = handleNotResponsible(req, res);
+            return res;
+        } catch (IOException e) {
+            res = handleShutdown(req);
+            if (res == null) {
+                System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
+            }
+            return res;
+        }
     }
 
     @Override
@@ -87,59 +87,59 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         req.setStatus(KVMessage.StatusType.GET);
         //if metadata is not null, find the server responsible for the key
         try {
-    			reconnect(req);
-    			sendMessage(new TextMessage(req.encode()));
-    			res.decode(receiveMessage().getMsg());
-    			res = handleNotResponsible(req, res);
-    			return res;
+            reconnect(req);
+            sendMessage(new TextMessage(req.encode()));
+            res.decode(receiveMessage().getMsg());
+            res = handleNotResponsible(req, res);
+            return res;
         } catch (IOException e) {
-			res = handleShutdown(req);
-			if ( res == null) {
-				System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
-			}
-			return res;
-		}
+            res = handleShutdown(req);
+            if (res == null) {
+                System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
+            }
+            return res;
+        }
     }
-    
-    private KVMessage handleShutdown(KVMessage req) throws Exception{
-		disconnect();
-		String hash = ECSNode.calcHash(req.getKey());
-		ECSNode toRemove = hashRing.getNodeByKey(hash);
-		hashRing.removeNode(toRemove);
-		ECSNode newServer = hashRing.getNodeByKey(hash);
-		try {
-			if (newServer != null) {
-				this.address = newServer.getNodeHost();
-				this.port = newServer.getNodePort();
-				connect();
-				if (req.getStatus().equals(KVMessage.StatusType.PUT)) {
-					return this.put(req.getKey(), req.getValue());
-				}
-			return this.get(req.getKey());
-		}
-		return null;
-		} catch (IOException e) {
-			return handleShutdown(req);
-		}
+
+    private KVMessage handleShutdown(KVMessage req) throws Exception {
+        disconnect();
+        String hash = ECSNode.calcHash(req.getKey());
+        ECSNode toRemove = hashRing.getNodeByKey(hash);
+        hashRing.removeNode(toRemove);
+        ECSNode newServer = hashRing.getNodeByKey(hash);
+        try {
+            if (newServer != null) {
+                this.address = newServer.getNodeHost();
+                this.port = newServer.getNodePort();
+                connect();
+                if (req.getStatus().equals(KVMessage.StatusType.PUT)) {
+                    return this.put(req.getKey(), req.getValue());
+                }
+                return this.get(req.getKey());
+            }
+            return null;
+        } catch (IOException e) {
+            return handleShutdown(req);
+        }
     }
-    
-    private void reconnect(KVMessage req) throws Exception{
-    		String hash = ECSNode.calcHash(req.getKey());
-    		ECSNode newServer = hashRing.getNodeByKey(hash);
-    		String addr = newServer.getNodeHost();
-    		int pt = newServer.getNodePort();
-    		if (addr.equals(this.address) && pt == this.port) {
-    			return;
-    		}
-    		this.address = addr;
-    		this.port = pt;
-    		disconnect();
-    		connect();
+
+    private void reconnect(KVMessage req) throws Exception {
+        String hash = ECSNode.calcHash(req.getKey());
+        ECSNode newServer = hashRing.getNodeByKey(hash);
+        String addr = newServer.getNodeHost();
+        int pt = newServer.getNodePort();
+        if (addr.equals(this.address) && pt == this.port) {
+            return;
+        }
+        this.address = addr;
+        this.port = pt;
+        disconnect();
+        connect();
     }
 
     private KVMessage handleNotResponsible(KVMessage req, KVMessage res) throws Exception {
         if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
-        		
+
             hashRingString = res.getValue();
             hashRing = new ECSHashRing(hashRingString);
             String hash = ECSNode.calcHash(res.getKey());
@@ -154,7 +154,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
             this.port = newServer.getNodePort();
             if (req.getStatus().equals(KVMessage.StatusType.GET)) {
                 return resendRequest(req.getKey(), null, req.getStatus());
-            } else if (req.getStatus().equals(KVMessage.StatusType.PUT)){
+            } else if (req.getStatus().equals(KVMessage.StatusType.PUT)) {
                 return resendRequest(req.getKey(), req.getValue(), req.getStatus());
             } else {
                 logger.fatal("Unexpected status type " + req.getStatus());
@@ -165,11 +165,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
     }
 
     private KVMessage resendRequest(String key, String value, KVMessage.StatusType request) throws Exception {
-
-    		disconnect();
-        logger.info("used for debugs");
-        logger.info(this.address);
-        logger.info(this.port);
+        disconnect();
         connect();
         if (request.equals(KVMessage.StatusType.PUT)) {
             return this.put(key, value);
