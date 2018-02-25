@@ -107,16 +107,20 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
 		ECSNode toRemove = hashRing.getNodeByKey(hash);
 		hashRing.removeNode(toRemove);
 		ECSNode newServer = hashRing.getNodeByKey(hash);
-		if (newServer != null) {
-			this.address = newServer.getNodeHost();
-			this.port = newServer.getNodePort();
-			connect();
-			if (req.getStatus().equals(KVMessage.StatusType.PUT)) {
-				return this.put(req.getKey(), req.getValue());
-			}
+		try {
+			if (newServer != null) {
+				this.address = newServer.getNodeHost();
+				this.port = newServer.getNodePort();
+				connect();
+				if (req.getStatus().equals(KVMessage.StatusType.PUT)) {
+					return this.put(req.getKey(), req.getValue());
+				}
 			return this.get(req.getKey());
 		}
 		return null;
+		} catch (IOException e) {
+			return handleShutdown(req);
+		}
     }
     
     private void reconnect(KVMessage req) throws Exception{
