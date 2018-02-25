@@ -76,11 +76,15 @@ public class KVClient implements IKVClient, Runnable {
             } else if (cmd.equals("get")) {
                 checkArgumentNum(tokens, 2);
                 KVMessage res = client.get(tokens[1]);
-                printMessage(res);
+                if (res != null) {
+                		printMessage(res);
+                }
             } else if (cmd.equals("put")) {
                 checkArgumentNum(tokens, 3);
                 KVMessage res = client.put(tokens[1], tokens[2]);
-                printMessage(res);
+                if (res != null) {
+            			printMessage(res);
+                }
             } else if (cmd.equals("logLevel")) {
                 checkArgumentNum(tokens, 2);
                 String level = setLevel(tokens[1]);

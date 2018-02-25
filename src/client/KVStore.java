@@ -7,6 +7,7 @@ import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
 
+import java.io.IOException;
 import java.net.Socket;
 
 /**
@@ -15,9 +16,9 @@ import java.net.Socket;
 public class KVStore extends AbstractKVConnection implements KVCommInterface {
     private String address;
     private int port;
-    private int detect;
     private String hashRingString;
     private ECSHashRing hashRing;
+    private static final String PROMPT = "> ";
 
     /**
      * Initialize KVStore with address and port of KVServer
@@ -29,7 +30,9 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         this.address = address;
         this.port = port;
         this.open = true;
-        this.detect = 0;
+        hashRing = new ECSHashRing();
+        ECSNode node = new ECSNode("node1", this.address, this.port);
+        hashRing.addNode(node);
     }
 
     @Override
@@ -46,24 +49,31 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
 
     @Override
     public KVMessage put(String key, String value) throws Exception {
-        if ("".equals(value)) {
-            value = "null";
-        }
-        KVMessage req = AbstractKVMessage.createMessage();
-        KVMessage res = AbstractKVMessage.createMessage();
-        assert res != null;
-        assert req != null;
-        req.setKey(key);
-        req.setValue(value);
-        req.setStatus(KVMessage.StatusType.PUT);
-        //if metadata is not null, find the server responsible for the key
-        if (this.detect == 1) {
-        		reconnect(req);
-        }
-        sendMessage(new TextMessage(req.encode()));
-        res.decode(receiveMessage().getMsg());
-        res = handleNotResponsible(req, res);
-        return res;
+    		
+    		if ("".equals(value)) {
+    			value = "null";
+    		}
+    		KVMessage req = AbstractKVMessage.createMessage();
+    		KVMessage res = AbstractKVMessage.createMessage();
+    		assert res != null;
+    		assert req != null;
+    		req.setKey(key);
+    		req.setValue(value);
+    		req.setStatus(KVMessage.StatusType.PUT);
+    		try {
+    			//if metadata is not null, find the server responsible for the key
+    			reconnect(req);
+    			sendMessage(new TextMessage(req.encode()));
+    			res.decode(receiveMessage().getMsg());
+    			res = handleNotResponsible(req, res);
+    			return res;
+    		} catch (IOException e) {
+    			res = handleShutdown(req);
+    			if ( res == null) {
+    				System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
+    			}
+    			return res;
+    		}
     }
 
     @Override
@@ -76,13 +86,37 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         req.setValue("");
         req.setStatus(KVMessage.StatusType.GET);
         //if metadata is not null, find the server responsible for the key
-        if (this.detect == 1) {
+        try {
     			reconnect(req);
-        }
-        sendMessage(new TextMessage(req.encode()));
-        res.decode(receiveMessage().getMsg());
-        res = handleNotResponsible(req, res);
-        return res;
+    			sendMessage(new TextMessage(req.encode()));
+    			res.decode(receiveMessage().getMsg());
+    			res = handleNotResponsible(req, res);
+    			return res;
+        } catch (IOException e) {
+			res = handleShutdown(req);
+			if ( res == null) {
+				System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
+			}
+			return res;
+		}
+    }
+    
+    private KVMessage handleShutdown(KVMessage req) throws Exception{
+		disconnect();
+		String hash = ECSNode.calcHash(req.getKey());
+		ECSNode toRemove = hashRing.getNodeByKey(hash);
+		hashRing.removeNode(toRemove);
+		ECSNode newServer = hashRing.getNodeByKey(hash);
+		if (newServer != null) {
+			this.address = newServer.getNodeHost();
+			this.port = newServer.getNodePort();
+			connect();
+			if (req.getStatus().equals(KVMessage.StatusType.PUT)) {
+				return this.put(req.getKey(), req.getValue());
+			}
+			return this.get(req.getKey());
+		}
+		return null;
     }
     
     private void reconnect(KVMessage req) throws Exception{
@@ -104,7 +138,6 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         		
             hashRingString = res.getValue();
             hashRing = new ECSHashRing(hashRingString);
-            this.detect = 1;
             String hash = ECSNode.calcHash(res.getKey());
             ECSNode newServer = hashRing.getNodeByKey(hash);
 
