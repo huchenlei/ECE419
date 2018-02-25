@@ -211,7 +211,7 @@ public class KVIterateStore implements KVPersistentStore {
 
             RandomAccessFile moveRaf = new RandomAccessFile(moveFile, "rw");
             RandomAccessFile remainRaf = new RandomAccessFile(remainFile, "rw");
-            BufferedReader raf = new BufferedReader(new FileReader(this.storageFile));
+            RandomAccessFile raf = new RandomAccessFile(this.storageFile,"r");
 
             // read original file line by line
             String line, curKey, curValue;
@@ -230,9 +230,9 @@ public class KVIterateStore implements KVPersistentStore {
                 curKey = strs[0];
                 curValue = strs[1];
                 byte[] stringBytes = (curKey + DELIM + curValue + "\r\n").getBytes("UTF-8");
-
+                String oriKey = decodeValue(curKey);
                 // append to move file
-                if (ECSNode.isKeyInRange(decodeValue(curKey), hashRange)) {
+                if (ECSNode.isKeyInRange(oriKey, hashRange)) {
                     long offset = moveRaf.length();
                     moveRaf.seek(offset);
                     moveRaf.write(stringBytes);

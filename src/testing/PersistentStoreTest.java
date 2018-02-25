@@ -1,33 +1,75 @@
 package testing;
 
+import common.messages.KVMessage;
+import ecs.ECSHashRing;
+import ecs.ECSNode;
 import junit.framework.TestCase;
 import logger.LogSetup;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.junit.Test;
+import performance.DataParser;
 import server.KVIterateStore;
 
+import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 public class PersistentStoreTest extends TestCase {
     private KVIterateStore storeFile;
     private Exception ex;
+    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox");
 
     @Override
     public void setUp() throws Exception {
 //        BasicConfigurator.configure();
-//        super.setUp();
-//        if (!LogSetup.isActive()) {
-//            new LogSetup("./logs/test_ecs.log", Level.ALL);
-//        }
+        super.setUp();
+        if (!LogSetup.isActive()) {
+            new LogSetup("./logs/test_ecs.log", Level.ALL);
+        }
 
         ex = null;
         storeFile = new KVIterateStore();
     }
+    @Test
+    public void testPutGetRealData() throws Exception {
+        storeFile.clearStorage();
+        String[] hashRange = new String[2];
+        hashRange[0] = "358343938402ebb5110716c6e836f5a2";
+        hashRange[1] = "a98109598267087dfc364fae4cf24578";
 
+
+        for (KVMessage msg : msgs) {
+            if (ECSNode.isKeyInRange(msg.getKey(), hashRange)) {
+                storeFile.put(msg.getKey(), msg.getValue());
+            }
+        }
+
+        String value;
+
+        for (KVMessage msg : msgs) {
+            value =  storeFile.get(msg.getKey());
+            if (ECSNode.isKeyInRange(msg.getKey(), hashRange)) {
+                assertEquals(msg.getValue(), value);
+            }
+            else{
+                assertNull(value);
+            }
+
+        }
+
+        storeFile.preMoveData(hashRange);
+        storeFile.afterMoveData();
+        File file = new File(storeFile.getfileName());
+        assertEquals(file.length(),0);
+
+
+
+
+    }
 
     @Test
     public void testPutGet() throws Exception {
