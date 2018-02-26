@@ -15,7 +15,7 @@ public class InteractionTest extends TestCase {
     private KVStore kvClient;
 
     public void setUp() {
-        kvClient = new KVStore("localhost", 50000);
+        kvClient = new KVStore("localhost", 50099);
         try {
             kvClient.connect();
         } catch (Exception e) {
@@ -141,21 +141,20 @@ public class InteractionTest extends TestCase {
             sb.append("a");
         }
 
-        String[] badVals = {" ", "\n", "\t", sb.toString()};
+        String[] badVals = {sb.toString()};
         String key = "key";
-
         KVMessage res = null;
         for (String badVal :
                 badVals) {
             res = kvClient.put(key, badVal);
-            assertEquals(res.getStatus(), StatusType.PUT_ERROR);
+            assertEquals(StatusType.PUT_ERROR, res.getStatus());
         }
     }
 
     public void testBadKeys() throws Exception {
         String[] badKeys = {
                 // These keys are not allowed
-                " ", "\n", "\t",
+                "",
                 // key with 21 byte length
                 "123456789012345678901",
         };

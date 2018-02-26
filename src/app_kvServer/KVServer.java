@@ -44,6 +44,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     private ServerStatus status;
     private String serverName;
+    private boolean isDistributed = false;
 
     /* zookeeper info */
     private String zkHostName;
@@ -114,7 +115,12 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         this.port = port;
     }
 
+    public boolean isDistributed() {
+        return isDistributed;
+    }
+
     public KVServer(String name, String zkHostName, int zkPort) {
+        this.isDistributed = true;
         this.zkHostName = zkHostName;
         this.serverName = name;
         this.zkPort = zkPort;

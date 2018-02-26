@@ -68,27 +68,31 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         assert res != null;
         res.setKey(m.getKey());
 
-        ECSHashRing hashRing = ((KVServer) kvServer).getHashRing();
-        // stopped server can not handle any request
-        if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)
-                || hashRing.empty()) {
-            res.setValue("");
-            res.setStatus(KVMessage.StatusType.SERVER_STOPPED);
-            return res;
-        }
+        if (((KVServer) kvServer).isDistributed()) {
+            ECSHashRing hashRing = ((KVServer) kvServer).getHashRing();
+            // stopped server can not handle any request
+            if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)
+                    || hashRing.empty()) {
+                res.setValue("");
+                res.setStatus(KVMessage.StatusType.SERVER_STOPPED);
+                return res;
+            }
 
 
-        ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
-        if (node == null) {
-            logger.error("HashRing: " + hashRing);
+            ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
+            if (node == null) {
+                logger.error("HashRing: " + hashRing);
+            }
+
+            assert node != null;
+            if (!node.getNodeName().equals(((KVServer) kvServer).getServerName())) {
+                res.setValue(((KVServer) kvServer).getHashRingString());
+                res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
+                return res;
+            }
+
         }
 
-        assert node != null;
-        if (!node.getNodeName().equals(((KVServer) kvServer).getServerName())) {
-            res.setValue(((KVServer) kvServer).getHashRingString());
-            res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
-            return res;
-        }
 
 
         switch (m.getStatus()) {
