@@ -51,47 +51,51 @@ public class KVIterateStore implements KVPersistentStore {
     }
 
     private void deleteEntry(RandomAccessFile raf, long offset1, long offset2) throws IOException {
-        RandomAccessFile rTemp = new RandomAccessFile(new File(this.dir + "/" + "." + this.fileName + "~"),
-                "rw");
-        long fileSize = raf.length();
-        FileChannel sourceChannel = raf.getChannel();
-        FileChannel targetChannel = rTemp.getChannel();
-        // move rest of the content (from end of the entry) to temp channel
-        sourceChannel.transferTo(offset2, fileSize - offset2, targetChannel);
-        // remove content from the start of the entry
-        sourceChannel.truncate(offset1);
-        // move content back
-        targetChannel.position(0L);
-        sourceChannel.transferFrom(targetChannel, offset1, (fileSize - offset2));
-        // clean the target_file
-        targetChannel.truncate(0);
-        sourceChannel.close();
-        targetChannel.close();
-        rTemp.close();
+        synchronized(this) {
+            RandomAccessFile rTemp = new RandomAccessFile(new File(this.dir + "/" + "." + this.fileName + "~"),
+                    "rw");
+            long fileSize = raf.length();
+            FileChannel sourceChannel = raf.getChannel();
+            FileChannel targetChannel = rTemp.getChannel();
+            // move rest of the content (from end of the entry) to temp channel
+            sourceChannel.transferTo(offset2, fileSize - offset2, targetChannel);
+            // remove content from the start of the entry
+            sourceChannel.truncate(offset1);
+            // move content back
+            targetChannel.position(0L);
+            sourceChannel.transferFrom(targetChannel, offset1, (fileSize - offset2));
+            // clean the target_file
+            targetChannel.truncate(0);
+            sourceChannel.close();
+            targetChannel.close();
+            rTemp.close();
+        }
     }
 
     private void updateEntry(RandomAccessFile raf, long offset1, long offset2, byte[] stringBytes) throws IOException {
-        RandomAccessFile rTemp = new RandomAccessFile(new File(this.dir + "/" + "." + this.fileName + "~"),
-                "rw");
-        long fileSize = raf.length();
-        FileChannel sourceChannel = raf.getChannel();
-        FileChannel targetChannel = rTemp.getChannel();
-        // move rest of the content (from end of the entry) to temp channel
-        sourceChannel.transferTo(offset2, fileSize - offset2, targetChannel);
-        // remove content from the start of the entry
-        sourceChannel.truncate(offset1);
-        // insert the new entry
-        raf.seek(offset1);
-        raf.write(stringBytes);
-        long newOffset = raf.getFilePointer();
-        // move content back
-        targetChannel.position(0L);
-        sourceChannel.transferFrom(targetChannel, newOffset, (fileSize - offset2));
-        // clean target channel
-        targetChannel.truncate(0);
-        sourceChannel.close();
-        targetChannel.close();
-        rTemp.close();
+        synchronized(this) {
+            RandomAccessFile rTemp = new RandomAccessFile(new File(this.dir + "/" + "." + this.fileName + "~"),
+                    "rw");
+            long fileSize = raf.length();
+            FileChannel sourceChannel = raf.getChannel();
+            FileChannel targetChannel = rTemp.getChannel();
+            // move rest of the content (from end of the entry) to temp channel
+            sourceChannel.transferTo(offset2, fileSize - offset2, targetChannel);
+            // remove content from the start of the entry
+            sourceChannel.truncate(offset1);
+            // insert the new entry
+            raf.seek(offset1);
+            raf.write(stringBytes);
+            long newOffset = raf.getFilePointer();
+            // move content back
+            targetChannel.position(0L);
+            sourceChannel.transferFrom(targetChannel, newOffset, (fileSize - offset2));
+            // clean target channel
+            targetChannel.truncate(0);
+            sourceChannel.close();
+            targetChannel.close();
+            rTemp.close();
+        }
     }
 
 
@@ -131,51 +135,55 @@ public class KVIterateStore implements KVPersistentStore {
         } finally {
             raf.close();
         }
-
     }
 
     @Override
     public String get(String key) throws Exception {
-        assert (this.storageFile != null);
-        String value = null;
-        this.startOffset = 0;
-        this.endOffset = 0;
-        try {
-            RandomAccessFile raf = new RandomAccessFile(this.storageFile, "r");
-            String line, curKey, curValue;
-            while ((line = raf.readLine()) != null) {
-                // convert line from ISO to UTF-8
-                line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
-                this.startOffset = this.endOffset;
-                this.endOffset = raf.getFilePointer();
-                if (line.isEmpty()) {
-                    System.out.println("how could it be");
-                    continue;
-                }
-                String[] strs = line.split(DELIM);
-                if (strs.length != 2) {
-                    raf.close();
-                    throw new IOException(prompt + "Invalid Entry found: " + line);
-                }
-                curKey = decodeValue(strs[0]);
-                curValue = strs[1];
+        synchronized(this) {
+            assert (this.storageFile != null);
+            String value = null;
+            this.startOffset = 0;
+            this.endOffset = 0;
+            try {
+                RandomAccessFile raf = new RandomAccessFile(this.storageFile, "r");
+                String line, curKey, curValue;
+                while ((line = raf.readLine()) != null) {
+                    // convert line from ISO to UTF-8
+                    line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
+                    this.startOffset = this.endOffset;
+                    this.endOffset = raf.getFilePointer();
+                    if (line.contains("<24442933.1075855691664")) {
+                        int a = 2;
+                    }
+                    if (line.isEmpty()) {
+                        System.out.println("how could it be");
+                        continue;
+                    }
+                    String[] strs = line.split(DELIM);
+                    if (strs.length != 2) {
+                        raf.close();
+                        throw new IOException(prompt + "Invalid Entry found: " + line);
+                    }
+                    curKey = decodeValue(strs[0]);
+                    curValue = strs[1];
 
-                if (curKey.equals(key)) {
-                    value = curValue;
-                    break;
+                    if (curKey.equals(key)) {
+                        value = curValue;
+                        break;
+                    }
                 }
+                raf.close();
+
+            } catch (FileNotFoundException fnf) {
+                logger.error(prompt + "Storage file not found", fnf);
+                throw fnf;
             }
-            raf.close();
 
-        } catch (FileNotFoundException fnf) {
-            logger.error(prompt + "Storage file not found", fnf);
-            throw fnf;
+            if (value != null) {
+                value = decodeValue(value);
+            }
+            return value;
         }
-
-        if (value != null) {
-            value = decodeValue(value);
-        }
-        return value;
     }
 
     @Override
