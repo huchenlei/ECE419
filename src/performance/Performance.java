@@ -109,25 +109,25 @@ public class Performance {
 	
 	public float totalLatency() {
 		long totalLat = this.totalGetLatency+this.totalPutLatency;
-		logger.info("Total Latency in mili seconds is:" + totalLat/1000000);
+		System.out.println("Total Latency in mili seconds is:" + totalLat/1000000);
 		return totalLat/1000000;
 	}
 	
 	public float averageLatency() {
 		float totalAvgLat = (this.totalGetLatency+this.totalPutLatency)/(this.numReqests);
-		logger.info("Total average latency in mili seconds is:" + totalAvgLat/1000000);
+		System.out.println("Total average latency in mili seconds is:" + totalAvgLat/1000000);
 		return totalAvgLat/1000000;
 	}
 	
 	public float averagePutLatency() {
 		float averagePutLat = this.totalPutLatency / (this.numReqests/2);
-		logger.info("Average put latency in mili seconds is:" + averagePutLat/1000000 );
+		System.out.println("Average put latency in mili seconds is:" + averagePutLat/1000000 );
 		return averagePutLat/1000000;
 	}
 	
 	public float averageGetLatency() {
 		float averageGetLat = this.totalGetLatency / (this.numReqests/2);
-		logger.info("Average get latency in mili seconds is:" + averageGetLat/1000000 );
+		System.out.println("Average get latency in mili seconds is:" + averageGetLat/1000000 );
 		return averageGetLat/1000000;
 	}
 	
@@ -141,13 +141,13 @@ public class Performance {
 		int cacheSize=50;
 		//ensure numRequest / numClients is a integer
 		//ensure numRequest is an even number
-		int numRequest=100;
+		int numRequest=1000;
 		String cacheStrategy = "FIFO";
 		int numClients = 5;
 		int numServers = 5;
 
 		try {
-			 new LogSetup("logs/testing/performance.log", Level.INFO);
+			 new LogSetup("logs/testing/performance.log", Level.ERROR);
 			 Performance performance = new Performance(cacheSize, cacheStrategy, 
 					 numServers, numClients, numRequest);
 			 performance.startTest();
