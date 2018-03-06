@@ -33,8 +33,9 @@ public class Performance {
     private Integer CACHE_SIZE;
     private List<KVServer> servers = new ArrayList<>();
     private List<KVStore> clients = new ArrayList<>();
-    private List<ClientSession> sessions = new ArrayList<>();
-    private List<KVMessage> msgs = DataParser.parseDataFrom("allen-p");
+    private List<ClientPutSession> putSessions = new ArrayList<>();
+    private List<ClientGetSession> getSessions = new ArrayList<>();
+    private List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/all_documents");
 	
 	public Performance (int cacheSize, String strategy, Integer numNodes, 
 			Integer numClients, int numReq) throws Exception {
@@ -84,27 +85,52 @@ public class Performance {
     public void startTest() throws Exception {
     		int num = this.numReqests / this.clients.size(); 
     		for (KVStore client : clients) {
-    			ClientSession session = new ClientSession(client, this.msgs, num);
-    			this.sessions.add(session);
+    			ClientPutSession putSession = new ClientPutSession(client, this.msgs, num);
+    			this.putSessions.add(putSession);
+    			ClientGetSession getSession = new ClientGetSession(client, this.msgs, num);
+    			this.getSessions.add(getSession);
     		}
-    		for (ClientSession session : sessions) {
-    			session.start();
+    		//performance metrics for put requests
+    		long start = System.nanoTime();
+    		for (ClientPutSession sessionp : putSessions) {
+    			sessionp.start();
     		}
-    		//Let all the sessions finish running
-    		Thread.sleep(20000);
     		while (true) {
-    			if (this.sessions.isEmpty()) {
+    			if (this.putSessions.isEmpty()) {
     				break;
     			}
-    			for (Iterator<ClientSession> iterator = sessions.iterator(); iterator.hasNext(); ) {
-    				ClientSession session = iterator.next();
+    			//wait for the client session to be finished
+        		Thread.sleep(500);
+    			for (Iterator<ClientPutSession> iterator = putSessions.iterator(); iterator.hasNext(); ) {
+    				ClientPutSession session = iterator.next();
     				if (session.finishFlag()) {
-    					this.totalGetLatency += session.getLantency();
-    					this.totalPutLatency += session.putLantency();
     					iterator.remove();
     				}
     			}
     		}
+    		long end = System.nanoTime();
+    		this.totalPutLatency = end-start;
+    		
+    		//performance metrics for get requests
+    		start = System.nanoTime();
+    		for (ClientGetSession sessiong : getSessions) {
+    			sessiong.start();
+    		}
+    		while (true) {
+    			if (this.getSessions.isEmpty()) {
+    				break;
+    			}
+    			//wait for the client session to be finished
+        		Thread.sleep(500);
+    			for (Iterator<ClientGetSession> iterator = getSessions.iterator(); iterator.hasNext(); ) {
+    				ClientGetSession session = iterator.next();
+    				if (session.finishFlag()) {
+    					iterator.remove();
+    				}
+    			}
+    		}
+    		end = System.nanoTime();
+    		this.totalGetLatency = end-start;
     }
 	
 	public float totalLatency() {
@@ -144,7 +170,7 @@ public class Performance {
 		int numRequest=1000;
 		String cacheStrategy = "FIFO";
 		int numClients = 5;
-		int numServers = 5;
+		int numServers = 15;
 
 		try {
 			 new LogSetup("logs/testing/performance.log", Level.ERROR);
@@ -165,32 +191,19 @@ public class Performance {
 
 }
 
-
-class ClientSession extends Thread {
+class ClientGetSession extends Thread {
 	private List<KVMessage> messages;
 	private KVStore client;
 	private int numReq;
 	private boolean finishRequests;
-	private long getLatency;
-	private long putLatency;
 	private int size;
 	
-	public ClientSession(KVStore store, List<KVMessage> msgs, int num) {
+	public ClientGetSession(KVStore store, List<KVMessage> msgs, int num) {
 		this.messages = msgs;
 		this.client = store;
 		this.numReq = num;
-		this.getLatency = 0;
-		this.putLatency = 0;
 		this.size = this.messages.size();
 		this.finishRequests = false;
-	}
-	
-	public long getLantency() {
-		return this.getLatency;
-	}
-	
-	public long putLantency() {
-		return this.putLatency;
 	}
 	
 	public boolean finishFlag() {
@@ -202,20 +215,46 @@ class ClientSession extends Thread {
 		Random rand = new Random();
 		try {
 			int index;
-			long start = System.nanoTime();
-			for(int i=0; i< numReq/2; i++) {
-				index = rand.nextInt(this.size);
-				client.put(messages.get(index).getKey(), messages.get(index).getValue());
-			}
-			long end = System.nanoTime();
-			this.putLatency = end-start;
-			start = System.nanoTime();
 			for(int i=0; i< numReq/2; i++) {
 				index = rand.nextInt(this.size);
 				client.get(messages.get(index).getKey());
 			}
-			end = System.nanoTime();
-			this.getLatency = end-start;	
+			this.finishRequests = true;
+	
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	} 
+}
+
+class ClientPutSession extends Thread {
+	private List<KVMessage> messages;
+	private KVStore client;
+	private int numReq;
+	private boolean finishRequests;
+	private int size;
+	
+	public ClientPutSession(KVStore store, List<KVMessage> msgs, int num) {
+		this.messages = msgs;
+		this.client = store;
+		this.numReq = num;
+		this.size = this.messages.size();
+		this.finishRequests = false;
+	}
+	
+	public boolean finishFlag() {
+		return this.finishRequests;
+	}
+	
+	@Override
+	public void run(){  
+		Random rand = new Random();
+		try {
+			int index;
+			for(int i=0; i< numReq/2; i++) {
+				index = rand.nextInt(this.size);
+				client.put(messages.get(index).getKey(), messages.get(index).getValue());
+			}
 			this.finishRequests = true;
 			
 		} catch (Exception e) {
