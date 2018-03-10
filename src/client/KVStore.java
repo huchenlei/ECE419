@@ -71,6 +71,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
             res = handleShutdown(req);
             if (res == null) {
                 System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
+                throw e;
             }
             return res;
         }
@@ -96,6 +97,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
             res = handleShutdown(req);
             if (res == null) {
                 System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
+                throw e;
             }
             return res;
         }
