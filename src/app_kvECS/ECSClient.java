@@ -3,6 +3,7 @@ package app_kvECS;
 import app_kvClient.KVClient;
 import client.ArgumentNumberException;
 import ecs.ECS;
+import ecs.IECSNode;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -42,28 +43,34 @@ public class ECSClient implements Runnable {
         assert tokens.length > 0;
         String cmd = tokens[0];
 
+        if (cmd == null) {
+            System.out.println("Empty Command!");
+            return;
+        }
+
         try {
             KVClient.checkArgumentNum(tokens, argTable.get(cmd));
-
+            boolean result = false;
             switch (cmd) {
                 case "start":
-                    ecs.start();
+                    result = ecs.start();
                     break;
                 case "stop":
-                    ecs.stop();
+                    result = ecs.stop();
                     break;
                 case "shutDown":
-                    ecs.shutdown();
+                    result = ecs.shutdown();
                     break;
                 case "help":
                     printHelp();
                     break;
                 case "addNode":
                     try {
-                        ecs.addNode(
+                        IECSNode node = ecs.addNode(
                                 tokens[1],
                                 Integer.parseInt(tokens[2])
                         );
+                        result = (node != null);
                     } catch (NumberFormatException nfe) {
                         printError("cache size must be an integer!\nUsage: addNode <strategy> <cacheSize>");
                         logger.info("Unable to parse argument <cacheSize>", nfe);
@@ -75,11 +82,19 @@ public class ECSClient implements Runnable {
                 case "removeNodes":
                     List<String> serverNames = Arrays.asList(tokens);
                     serverNames.remove(0); // remove cmd from head
-                    ecs.removeNodes(serverNames);
+                    result = ecs.removeNodes(serverNames);
+                    break;
+                case "quit":
+                    this.running = false;
                     break;
                 default:
                     printError("Unknown command!");
                     printHelp();
+            }
+            if (result) {
+                System.out.println(PROMPT + "operation successful");
+            } else {
+                System.out.println(PROMPT + "operation failed");
             }
         } catch (ArgumentNumberException e) {
             printError(e.getMessage());
@@ -94,8 +109,7 @@ public class ECSClient implements Runnable {
     }
 
     private void printHelp() {
-        // TODO
-        System.out.println("help! // TODO");
+        System.out.println("Usage: addNode/start/stop/shutDown/removeNodes/quit");
     }
 
     @Override
