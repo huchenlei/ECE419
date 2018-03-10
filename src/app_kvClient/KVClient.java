@@ -216,7 +216,7 @@ public class KVClient implements IKVClient, Runnable {
 
     public static void main(String[] args) {
         try {
-            new LogSetup("logs/client.log", Level.OFF);
+            new LogSetup("logs/client.log", Level.ALL);
             new KVClient().run();
         } catch (IOException e) {
             System.err.println("Unable to initialize logger!");

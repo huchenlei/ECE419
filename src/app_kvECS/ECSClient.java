@@ -115,7 +115,7 @@ public class ECSClient implements Runnable {
 
     public static void main(String[] args) {
         try {
-            new LogSetup("logs/ecs.log", Level.OFF);
+            new LogSetup("logs/ecs.log", Level.ALL);
             if (args.length < 1) {
                 System.err.println("Error! Invalid number of arguments!");
                 System.err.println("Usage: ECS <config file>!");

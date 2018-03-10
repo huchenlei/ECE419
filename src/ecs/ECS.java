@@ -203,14 +203,15 @@ public class ECS implements IECSClient {
                     ZK_HOST,
                     ZK_PORT);
             String sshCmd = "ssh -o StrictHostKeyChecking=no -n " + n.getNodeHost() + " nohup " + javaCmd +
-                    " > ./logs/output.log 2> ./logs/err.log &";
+                    " &";
             // Redirect output to files so that ssh channel will not wait for further output
             try {
                 logger.info("Executing command: " + sshCmd);
                 Process p = Runtime.getRuntime().exec(sshCmd);
-                p.waitFor();
-                assert !p.isAlive();
-                assert p.exitValue() == 0;
+                Thread.sleep(100);
+                // p.waitFor();
+                // assert !p.isAlive();
+                // assert p.exitValue() == 0;
             } catch (IOException e) {
                 logger.error("Unable to launch server with ssh (" + n + ")", e);
                 e.printStackTrace();
