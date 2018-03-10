@@ -11,6 +11,8 @@ import ecs.ECSNode;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 /**
  * Represents a connection end point for a particular client that is
@@ -85,14 +87,31 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
             }
 
             assert node != null;
-            if (!node.getNodeName().equals(((KVServer) kvServer).getServerName())) {
+
+            String serverName = ((KVServer) kvServer).getServerName();
+            Boolean responsible = true;
+            switch (m.getStatus()) {
+                case GET:
+                    Collection<ECSNode> replicationNodes =
+                            hashRing.getReplicationNodes(node);
+                    if (!replicationNodes.stream()
+                            .map(ECSNode::getNodeName)
+                            .collect(Collectors.toList())
+                            .contains(serverName)) {
+                        responsible = false;
+                    }
+                    break;
+                case PUT:
+                    if (!node.getNodeName().equals(serverName))
+                        responsible = false;
+            }
+
+            if (!responsible) {
                 res.setValue(((KVServer) kvServer).getHashRingString());
                 res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
                 return res;
             }
-
         }
-
 
 
         switch (m.getStatus()) {

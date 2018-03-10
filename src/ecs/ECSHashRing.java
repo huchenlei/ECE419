@@ -6,7 +6,9 @@ import org.apache.log4j.Logger;
 
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * This class wrap the ECS Nodes and provide an LinkedList container
@@ -18,6 +20,12 @@ public class ECSHashRing {
     private Integer size = 0;
     public static final String LOOP_ERROR_STR =
             "Mal-formed structure detected; potentially causing infinite loop";
+
+    /**
+     * How many data replication will be hold in the system
+     * The replication servers will be the ones immediately follows the coordinator
+     */
+    public static final Integer REPLICATION_NUM = 2;
 
     public Integer getSize() {
         return size;
@@ -180,6 +188,18 @@ public class ECSHashRing {
         }
         size = 0;
         root = null;
+    }
+
+    public Collection<ECSNode> getReplicationNodes(ECSNode coordinator) {
+        // Use a set to prevent duplication of dup server
+        Set<ECSNode> result = new HashSet<>();
+        ECSNode current = coordinator;
+        for (int i = 0; i < REPLICATION_NUM; i++) {
+            ECSNode next = getNextNode(current);
+            result.add(next);
+            current = next;
+        }
+        return result;
     }
 
     @Override

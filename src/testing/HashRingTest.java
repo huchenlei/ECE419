@@ -10,6 +10,7 @@ import org.apache.log4j.Logger;
 import org.junit.Before;
 import performance.DataParser;
 
+import java.util.Collection;
 import java.util.List;
 
 public class HashRingTest extends TestCase {
@@ -35,6 +36,7 @@ public class HashRingTest extends TestCase {
     public void testAddNode() {
         hr.addNode(new ECSNode("n1", "localhost", 5000));
         hr.addNode(new ECSNode("n2", "localhost", 5001));
+        hr.addNode(new ECSNode("n3", "localhost", 5002));
 
         try {
             // Duplicated hash val should report error
@@ -55,6 +57,13 @@ public class HashRingTest extends TestCase {
 
         ret = hr.getNodeByKey(n.getNodeHash() + 1);
         assertFalse(ret.equals(n));
+
+        ECSNode next = hr.getNextNode(n);
+        assertNotNull(next);
+
+        Collection<ECSNode> replications = hr.getReplicationNodes(n);
+        assertEquals(new Integer(2), ECSHashRing.REPLICATION_NUM);
+        assertEquals(ECSHashRing.REPLICATION_NUM, new Integer(replications.size()));
     }
 
     public void testRemoveNode() {
