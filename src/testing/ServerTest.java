@@ -1,12 +1,12 @@
 package testing;
 
 import app_kvServer.KVServer;
-import common.messages.KVMessage;
+import common.KVMessage;
 import ecs.ECS;
 import ecs.ECSNode;
 import junit.framework.TestCase;
-import org.apache.log4j.Level;
 import logger.LogSetup;
+import org.apache.log4j.Level;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
@@ -14,7 +14,6 @@ import org.apache.zookeeper.ZooKeeper;
 import org.junit.Test;
 import performance.DataParser;
 
-import java.io.File;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
