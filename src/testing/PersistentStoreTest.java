@@ -95,11 +95,6 @@ public class PersistentStoreTest extends TestCase {
         value = storeFile.get("what");
         assertTrue(value.equals("you\rhuo"));
 
-        // test UTF-8
-        storeFile.put("你好", "世界");
-        value = storeFile.get("你好");
-        assertTrue(value.equals("世界"));
-
         // test delete
         storeFile.put("wokeshuaile", "null");
         value = storeFile.get("wokeshuaile");
@@ -112,11 +107,6 @@ public class PersistentStoreTest extends TestCase {
         storeFile.put("hello", "null");
         value = storeFile.get("hello");
         assertTrue(value == null);
-
-        // test modify
-        storeFile.put("你好", "shijie");
-        value = storeFile.get("你好");
-        assertTrue(value.equals("shijie"));
 
         // delete an non existing key shall throw exception
         Exception ex = null;
