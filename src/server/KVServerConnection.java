@@ -42,6 +42,10 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     KVMessage req = AbstractKVMessage.createMessage();
                     assert req != null;
                     req.decode(receiveMessage().getMsg());
+                    if (!((KVServer)kvServer).isRunning()) {
+                        disconnect();
+                        return;
+                    }
                     KVMessage res = handleMsg(req);
                     sendMessage(new TextMessage(res.encode()));
                 } catch (IOException ioe) {
