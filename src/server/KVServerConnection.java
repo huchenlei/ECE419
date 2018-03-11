@@ -25,9 +25,9 @@ import java.util.stream.Collectors;
  * Created by Charlie on 2018-01-12.
  */
 public class KVServerConnection extends AbstractKVConnection implements Runnable {
-    private IKVServer kvServer;
+    private KVServer kvServer;
 
-    public KVServerConnection(IKVServer kvServer, Socket clientSocket) {
+    public KVServerConnection(KVServer kvServer, Socket clientSocket) {
         this.kvServer = kvServer;
         this.clientSocket = clientSocket;
         this.open = true;
@@ -70,8 +70,8 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         assert res != null;
         res.setKey(m.getKey());
 
-        if (((KVServer) kvServer).isDistributed()) {
-            ECSHashRing hashRing = ((KVServer) kvServer).getHashRing();
+        if (kvServer.isDistributed()) {
+            ECSHashRing hashRing = kvServer.getHashRing();
             // stopped server can not handle any request
             if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)
                     || hashRing.empty()) {
@@ -88,7 +88,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
             assert node != null;
 
-            String serverName = ((KVServer) kvServer).getServerName();
+            String serverName = kvServer.getServerName();
             Boolean responsible = true;
             switch (m.getStatus()) {
                 case GET:
@@ -107,7 +107,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
             }
 
             if (!responsible) {
-                res.setValue(((KVServer) kvServer).getHashRingString());
+                res.setValue(kvServer.getHashRingString());
                 res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
                 return res;
             }
@@ -128,7 +128,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     if (ex != null)
                         res.setValue(ex.getMessage());
                     else
-                        res.setValue("Key not found on server " + ((KVServer) kvServer).getServerName());
+                        res.setValue("Key not found on server " + kvServer.getServerName());
 
                     res.setStatus(KVMessage.StatusType.GET_ERROR);
                 } else {
@@ -138,6 +138,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                 break;
             }
 
+            case PUT_REPLICATE:
             case PUT: {
 
                 // if server locked, it can not handle put request
@@ -146,6 +147,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     res.setStatus(KVMessage.StatusType.SERVER_WRITE_LOCK);
                     return res;
                 }
+
                 res.setKey(m.getKey());
                 res.setValue(m.getValue());
 

@@ -16,7 +16,9 @@ public interface KVMessage extends Encodable, Decodable {
 
         SERVER_STOPPED,         /* Server is stopped, no requests are processed */
         SERVER_WRITE_LOCK,      /* Server locked for out, only get possible */
-        SERVER_NOT_RESPONSIBLE  /* Request not successful, server not responsible for key */
+        SERVER_NOT_RESPONSIBLE,  /* Request not successful, server not responsible for key */
+
+        PUT_REPLICATE, // Replication put launched from other server
     }
 
     /**

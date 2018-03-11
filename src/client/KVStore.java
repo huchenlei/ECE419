@@ -14,9 +14,6 @@ import java.net.Socket;
  * Represents a store session(connection) from client to server.
  */
 public class KVStore extends AbstractKVConnection implements KVCommInterface {
-    private String address;
-    private int port;
-    private String hashRingString;
     private ECSHashRing hashRing;
     private static final String PROMPT = "> ";
 
@@ -33,18 +30,6 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         hashRing = new ECSHashRing();
         ECSNode node = new ECSNode("node1", this.address, this.port);
         hashRing.addNode(node);
-    }
-
-    @Override
-    public void disconnect() {
-        super.disconnect();
-    }
-
-    @Override
-    public void connect() throws Exception {
-        this.clientSocket = new Socket(address, port);
-        this.input = clientSocket.getInputStream();
-        this.output = clientSocket.getOutputStream();
     }
 
     @Override
@@ -145,7 +130,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
     private KVMessage handleNotResponsible(KVMessage req, KVMessage res) throws Exception {
         if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
 
-            hashRingString = res.getValue();
+            String hashRingString = res.getValue();
             hashRing = new ECSHashRing(hashRingString);
             String hash = ECSNode.calcHash(res.getKey());
             ECSNode newServer = hashRing.getNodeByKey(hash);

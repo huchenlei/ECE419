@@ -14,6 +14,8 @@ import java.net.Socket;
  * Created by Charlie on 2018-01-12.
  */
 public abstract class AbstractKVConnection implements KVConnection {
+    protected String address;
+    protected int port;
     protected boolean open;
     protected Socket clientSocket;
     protected InputStream input;
@@ -29,6 +31,12 @@ public abstract class AbstractKVConnection implements KVConnection {
 
     public void setPrompt(String prompt) {
         this.prompt = prompt;
+    }
+
+    public void connect() throws IOException {
+        this.clientSocket = new Socket(address, port);
+        this.input = clientSocket.getInputStream();
+        this.output = clientSocket.getOutputStream();
     }
 
     public void disconnect() {
