@@ -4,7 +4,7 @@ import app_kvServer.IKVServer;
 import app_kvServer.KVServer;
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
-import common.messages.KVMessage;
+import common.KVMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;

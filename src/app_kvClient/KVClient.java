@@ -3,7 +3,7 @@ package app_kvClient;
 import client.ArgumentNumberException;
 import client.KVCommInterface;
 import client.KVStore;
-import common.messages.KVMessage;
+import common.KVMessage;
 import common.messages.KVMessageException;
 import logger.LogSetup;
 import org.apache.log4j.Level;

@@ -14,7 +14,7 @@ import org.apache.log4j.Logger;
 
 import app_kvServer.KVServer;
 import client.KVStore;
-import common.messages.KVMessage;
+import common.KVMessage;
 import ecs.ECS;
 import ecs.IECSNode;
 import logger.LogSetup;

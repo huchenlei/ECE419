@@ -1,4 +1,7 @@
-package common.messages;
+package common;
+
+import common.messages.Decodable;
+import common.messages.Encodable;
 
 public interface KVMessage extends Encodable, Decodable {
     public enum StatusType {
