@@ -4,13 +4,12 @@ import com.google.gson.Gson;
 import common.messages.KVAdminMessage;
 import ecs.ECS;
 import ecs.ECSHashRing;
+import ecs.ECSMulticaster;
+import ecs.ECSNode;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import server.*;
 import server.cache.KVCache;
@@ -21,6 +20,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -154,6 +154,14 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             // the node should be created before init the server
             Stat stat = zk.exists(zkPath, false);
 
+            if (stat == null) {
+                // create a node if does not exist
+                byte[] metadata = new Gson().toJson(new ServerMetaData("FIFO", 100)).getBytes();
+                zk.create(zkPath, metadata,
+                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                logger.info(prompt() + "Can not find serverNode, create one for test");
+            }
+
             // retrieve cache info from zookeeper
             byte[] cacheData = zk.getData(zkPath, false, null);
             String cacheString = new String(cacheData);
@@ -237,8 +245,9 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         try {
             // set watcher on childrens
             zk.getChildren(this.zkPath, this, null);
+            logger.debug(prompt() + "Set up watcher on " + zkPath);
         } catch (InterruptedException | KeeperException e) {
-            logger.debug(prompt() + "Unable to get set watcher on children");
+            logger.error(prompt() + "Unable to get set watcher on children");
             e.printStackTrace();
         }
 
@@ -289,6 +298,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     ServerMetaData metaData = new Gson().fromJson(metaDataString, ServerMetaData.class);
                     metaData.setReceivePort(receivePort);
                     metaData.setTransferProgress(0);
+                    metaData.setHost(this.receiverSocket.getInetAddress().getHostAddress());
 
                     rawMetaData = new Gson().toJson(metaData).getBytes();
                     zk.setData(zkPath, rawMetaData,
@@ -309,6 +319,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     String receiverMetaDataString = new String(rawReceiverMetaData);
                     ServerMetaData receiverMetaData = new Gson().fromJson(receiverMetaDataString, ServerMetaData.class);
                     Integer receiverPort = receiverMetaData.getReceivePort();
+                    String receiverHost = receiverMetaData.getHost();
 
                     // update its progress
                     byte[] rawSenderMetaData = zk.getData(zkPath, false, null);
@@ -325,7 +336,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     logger.info(prompt() + "Server" + zkPath + "start sending....");
 
                     // send data
-                    sendData(message.getHashRange(), message.getReceiverHost(), receiverPort);
+                    sendData(message.getHashRange(), receiverHost, receiverPort);
 
                     break;
 
@@ -520,8 +531,39 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public boolean moveData(String[] hashRange, String targetName) throws Exception {
-        // Don't want to get ip and port from target name
-        return false;
+        // create a fake node for multicast
+        ECSNode node = new ECSNode(targetName, "localhost-fake", 0);
+        ECSMulticaster multicaster = new ECSMulticaster(zk, Collections.singletonList(node));
+        boolean ack = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.RECEIVE));
+
+        if (!ack) {
+            logger.error("Failed to ack receiver of data " + node);
+            logger.error("hash range is " + hashRange[0] + " to " + hashRange[1]);
+            return false;
+        }
+
+        // read receiver's node to get port
+        byte[] rawReceiverMetaData = zk.getData(ECS.ZK_SERVER_ROOT + "/" + targetName,
+                false, null);
+        String receiverMetaDataString = new String(rawReceiverMetaData);
+        ServerMetaData receiverMetaData = new Gson().fromJson(receiverMetaDataString, ServerMetaData.class);
+        Integer receiverPort = receiverMetaData.getReceivePort();
+        String receiverHost = receiverMetaData.getHost();
+
+        // update its progress
+        byte[] rawSenderMetaData = zk.getData(zkPath, false, null);
+        String senderMetaDataString = new String(rawSenderMetaData);
+        ServerMetaData senderMetaData = new Gson().fromJson(senderMetaDataString, ServerMetaData.class);
+        senderMetaData.setTransferProgress(0);
+
+        rawSenderMetaData = new Gson().toJson(senderMetaData).getBytes();
+        zk.setData(zkPath, rawSenderMetaData,
+                zk.exists(zkPath, false).getVersion());
+
+        // send data
+        sendData(hashRange, receiverHost, receiverPort);
+
+        return true;
     }
 
 
@@ -583,8 +625,9 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             ((KVIterateStore) this.store).afterMoveData();
 
             this.unlockWrite();
-
+            this.cache.clear();
             logger.info(prompt() + "Finish transferring data");
+
 
             return true;
         } catch (IOException e) {
