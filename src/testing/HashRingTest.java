@@ -1,6 +1,6 @@
 package testing;
 
-import common.messages.KVMessage;
+import common.KVMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
 import junit.framework.TestCase;

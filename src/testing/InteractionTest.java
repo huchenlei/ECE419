@@ -4,10 +4,8 @@ import org.junit.Test;
 
 import client.KVStore;
 import junit.framework.TestCase;
-import common.messages.KVMessage;
-import common.messages.KVMessage.StatusType;
-
-import java.util.Map;
+import common.KVMessage;
+import common.KVMessage.StatusType;
 
 
 public class InteractionTest extends TestCase {

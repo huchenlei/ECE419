@@ -4,7 +4,7 @@ import app_kvServer.IKVServer;
 import app_kvServer.KVServer;
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
-import common.messages.KVMessage;
+import common.KVMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
@@ -44,6 +44,10 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     KVMessage req = AbstractKVMessage.createMessage();
                     assert req != null;
                     req.decode(receiveMessage().getMsg());
+                    if (!((KVServer)kvServer).isRunning()) {
+                        disconnect();
+                        return;
+                    }
                     KVMessage res = handleMsg(req);
                     sendMessage(new TextMessage(res.encode()));
                 } catch (IOException ioe) {

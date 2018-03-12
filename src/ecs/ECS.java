@@ -28,7 +28,7 @@ public class ECS implements IECSClient {
     // Assumes that ZooKeeper runs on localhost default port(2181)
     public static final String ZK_HOST = "127.0.0.1";
     public static final String ZK_PORT = "2181";
-    private static final String ZK_CONN = ZK_HOST + ":" + ZK_PORT;
+    public static final String ZK_CONN = ZK_HOST + ":" + ZK_PORT;
 
     // ZooKeeper connection timeout in millisecond
     public static final int ZK_TIMEOUT = 5000;

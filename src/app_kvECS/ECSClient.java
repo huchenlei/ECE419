@@ -11,10 +11,7 @@ import org.apache.log4j.Logger;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ECSClient implements Runnable {
     private Logger logger = Logger.getRootLogger();
@@ -35,6 +32,7 @@ public class ECSClient implements Runnable {
             put("help", 0);
             put("addNode", 2);
             put("removeNodes", 1); // remove at least one node
+            put("quit", 0);
         }
     };
 
@@ -80,12 +78,13 @@ public class ECSClient implements Runnable {
                     }
                     break;
                 case "removeNodes":
-                    List<String> serverNames = Arrays.asList(tokens);
+                    List<String> serverNames = new ArrayList<>(Arrays.asList(tokens));
                     serverNames.remove(0); // remove cmd from head
                     result = ecs.removeNodes(serverNames);
                     break;
                 case "quit":
                     this.running = false;
+                    result = true;
                     break;
                 default:
                     printError("Unknown command!");

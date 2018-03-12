@@ -1,15 +1,18 @@
 package testing;
 
 import common.messages.KVMessage;
+import ecs.ECSHashRing;
 import ecs.ECSNode;
 import junit.framework.TestCase;
 import logger.LogSetup;
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.junit.Test;
 import performance.DataParser;
 import server.KVIterateStore;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

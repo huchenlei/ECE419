@@ -1,5 +1,6 @@
 package common.messages;
 
+import common.KVMessage;
 import org.apache.log4j.Logger;
 
 import java.lang.reflect.Constructor;

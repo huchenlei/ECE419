@@ -2,14 +2,13 @@ package performance;
 
 import app_kvServer.KVServer;
 import common.messages.JsonKVMessage;
-import common.messages.KVMessage;
+import common.KVMessage;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.log4j.Logger;
 
 import java.io.*;
-import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;

@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import common.messages.KVAdminMessage;
 import ecs.ECS;
 import ecs.ECSHashRing;
-import ecs.ECSNode;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -22,9 +21,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 
@@ -63,16 +60,8 @@ public class KVServer implements IKVServer, Runnable, Watcher {
      * cache would be null if strategy is set to None
      */
     private KVCache cache;
-
-    /**
-     * Main coordinator storage of key-vals
-     */
     private KVPersistentStore store;
 
-    /**
-     * Replication storage for other servers' data replication
-     */
-    private Map<ECSNode, KVPersistentStore> replicaStores;
 
     public String getHashRingString() {
         return hashRingString;
@@ -201,7 +190,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, new Watcher() {
                 // handle hashRing update
                 public void process(WatchedEvent we) {
-                    if (!running) {
+                    if (!running){
                         return;
                     }
                     try {
@@ -243,17 +232,17 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             }
         }
 
-        // Initialize persistent storage
-        this.store = new KVIterateStore(name + "_Main_DataBase");
-        this.replicaStores = new HashMap<>();
+        this.store = new KVIterateStore(name + "_iterateDataBase");
 
         try {
-            // set watcher on children
+            // set watcher on childrens
             zk.getChildren(this.zkPath, this, null);
         } catch (InterruptedException | KeeperException e) {
             logger.debug(prompt() + "Unable to get set watcher on children");
             e.printStackTrace();
         }
+
+
     }
 
     @Override
