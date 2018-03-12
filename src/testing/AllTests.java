@@ -38,7 +38,8 @@ public class AllTests {
                 PersistentStoreTest.class,
                 HashRingTest.class,
                 ECSBasicTest.class,
-                ECSLoadTest.class
+                ECSLoadTest.class,
+                ServerTest.class
         );
         for (Class<? extends TestCase> test :
                 tests) {

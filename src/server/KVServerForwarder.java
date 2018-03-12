@@ -2,7 +2,7 @@ package server;
 
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
-import common.messages.KVMessage;
+import common.KVMessage;
 import common.messages.TextMessage;
 import ecs.ECSNode;
 
