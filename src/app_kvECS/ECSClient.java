@@ -84,7 +84,7 @@ public class ECSClient implements Runnable {
                     break;
                 case "quit":
                     this.running = false;
-                    result = true;
+                    result = ecs.shutdown();
                     break;
                 default:
                     printError("Unknown command!");
