@@ -1,5 +1,3 @@
-package testing;
-
 import app_kvServer.KVServer;
 import ecs.ECS;
 import ecs.ECSNode;
@@ -46,9 +44,9 @@ public class ECSBasicTest extends TestCase {
      */
     public void test01Creation() throws IOException {
         ecs = new ECS("./ecs.config");
-        new ECS("./test_instances/ecs_dup_name.config");
+        new ECS("./test_resource/ecs_dup_name.config");
         try {
-            new ECS("./test_instances/ecs_bad_format.config");
+            new ECS("./test_resource/ecs_bad_format.config");
         } catch (Exception e) {
             ex = e;
         }

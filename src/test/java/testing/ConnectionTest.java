@@ -1,5 +1,3 @@
-package testing;
-
 import java.net.UnknownHostException;
 
 import app_kvServer.KVServer;

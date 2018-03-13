@@ -1,5 +1,3 @@
-package testing;
-
 import app_kvServer.KVServer;
 import client.KVStore;
 import common.KVMessage;
@@ -19,9 +17,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static testing.ECSLoadTest.TestHelper.addNodes;
-import static testing.ECSLoadTest.TestHelper.getRandomClient;
-import static testing.ECSLoadTest.TestHelper.testGetData;
+import static ECSLoadTest.TestHelper.addNodes;
+import static ECSLoadTest.TestHelper.getRandomClient;
+import static ECSLoadTest.TestHelper.testGetData;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ECSLoadTest extends TestCase {

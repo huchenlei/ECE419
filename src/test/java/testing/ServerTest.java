@@ -1,5 +1,3 @@
-package testing;
-
 import app_kvServer.KVServer;
 import common.KVMessage;
 import ecs.ECS;

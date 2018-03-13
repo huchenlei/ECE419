@@ -26,4 +26,8 @@ ecs.config
 gradle/
 
 # node libraries
-main_resource/node_modules/
+node_modules/
+dist/
+
+# build dir
+build/
