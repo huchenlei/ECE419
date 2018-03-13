@@ -22,13 +22,16 @@ sourceSets {
         java {
             srcDirs = ['src/']
         }
+        resources {
+            srcDirs = ['main_resource']
+        }
     }
     test {
         java {
             srcDirs = ['src/testing']
         }
         resources {
-            srcDirs = ['test_instances']
+            srcDirs = ['test_resource']
         }
     }
 }
