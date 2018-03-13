@@ -21,3 +21,6 @@ TEST*.txt
 
 # ecs config file
 ecs.config
+
+.gradle/
+gradle/
