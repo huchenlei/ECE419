@@ -1,3 +1,4 @@
+package testing;
 import org.junit.Test;
 import junit.framework.TestCase;
 import server.cache.KVLFUCache;

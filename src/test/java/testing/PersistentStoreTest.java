@@ -1,3 +1,4 @@
+package testing;
 import common.KVMessage;
 import ecs.ECSNode;
 import junit.framework.TestCase;

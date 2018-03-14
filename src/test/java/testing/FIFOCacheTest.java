@@ -1,3 +1,4 @@
+package testing;
 import junit.framework.TestCase;
 import org.apache.log4j.BasicConfigurator;
 import org.junit.Test;

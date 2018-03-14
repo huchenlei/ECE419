@@ -1,3 +1,4 @@
+package testing;
 import junit.framework.TestCase;
 import org.apache.zookeeper.ZooKeeper;
 import org.junit.Test;
