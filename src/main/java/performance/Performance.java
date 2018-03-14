@@ -48,7 +48,7 @@ public class Performance {
 	    this.CACHE_SIZE = cacheSize;
 	    this.CACHE_STRATEGY = strategy;
 	    //initialize and start the required number of servers
-		ecs = new ECS("./ecs.config");
+		ecs = new ECS("ecs.config");
 		assertNotNull(ecs);
 		this.addNodes(numNodes);
 		boolean ret = ecs.start();

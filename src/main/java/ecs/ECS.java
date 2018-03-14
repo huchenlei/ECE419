@@ -6,6 +6,10 @@ import common.messages.KVAdminMessage;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import server.ServerMetaData;
 
 import java.io.BufferedReader;
@@ -21,6 +25,9 @@ import java.util.stream.Collectors;
 /**
  * This class handles core functionality of external configuration service
  */
+
+@Service
+@PropertySource("classpath:/app.properties")
 public class ECS implements IECSClient {
     private static final String SERVER_JAR = "KVServer.jar";
     // Assumes that the jar file is located at the same dir on the remote server
@@ -64,7 +71,7 @@ public class ECS implements IECSClient {
         }
     }
 
-    public ECS(String configFileName) throws IOException {
+    public ECS(@Value("${ecsConfigFile}") String configFileName) throws IOException {
         BufferedReader configReader = new BufferedReader(new FileReader(new File(configFileName)));
 
         String currentLine;
@@ -344,6 +351,26 @@ public class ECS implements IECSClient {
         return nodeTable;
     }
 
+    /* ---------- Following are methods exposing ecs details to web console ---------- */
+    public List<RawECSNode> getAllNodes() {
+        List<RawECSNode> result = getUsedNodes();
+        boolean r = result.addAll(getAvailableNodes());
+        assert r;
+        return result;
+    }
+
+    public List<RawECSNode> getUsedNodes() {
+        return nodeTable.values().stream()
+                .map(n -> (ECSNode) n)
+                .map(RawECSNode::new).collect(Collectors.toList());
+    }
+
+    public List<RawECSNode> getAvailableNodes() {
+        return nodePool.stream()
+                .map(n -> (ECSNode)n)
+                .map(RawECSNode::new).collect(Collectors.toList());
+    }
+
     @Override
     public IECSNode getNodeByKey(String key) {
         return hashRing.getNodeByKey(key);
@@ -354,7 +381,7 @@ public class ECS implements IECSClient {
      *
      * @return Json Array
      */
-    private String getHashRingJson() {
+    public String getHashRingJson() {
         List<RawECSNode> activeNodes = nodeTable.values().stream()
                 .map(n -> (ECSNode) n)
                 .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
