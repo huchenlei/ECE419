@@ -1,5 +1,5 @@
 # ignore the IDE files
-/.idea
+.idea/
 *.iml
 
 # output files

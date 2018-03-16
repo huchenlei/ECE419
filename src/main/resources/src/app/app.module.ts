@@ -65,6 +65,7 @@ import {BsDropdownModule} from 'ngx-bootstrap/dropdown';
 import {TabsModule} from 'ngx-bootstrap/tabs';
 import {ChartsModule} from 'ng2-charts/ng2-charts';
 import {NameComponent} from './name/name.component';
+import {HttpClientModule} from "@angular/common/http";
 
 @NgModule({
     imports: [
@@ -73,7 +74,8 @@ import {NameComponent} from './name/name.component';
         AppRoutingModule,
         BsDropdownModule.forRoot(),
         TabsModule.forRoot(),
-        ChartsModule
+        ChartsModule,
+        HttpClientModule
     ],
     declarations: [
         AppComponent,

@@ -18,7 +18,9 @@
                         <tbody>
                         <ng-container *ngFor="let node of nodeList">
                             <tr>
-                                <td>{{node.nodeName}}</td>
+                                <td>
+                                    <a routerLink="/server/{{node.nodeName}}">{{node.nodeName}}</a>
+                                </td>
                                 <td>{{node.nodeHost}}</td>
                                 <td>{{node.nodePort}}</td>
                                 <td>
