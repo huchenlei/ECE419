@@ -7,7 +7,7 @@
   "apps": [
     {
       "root": "src",
-      "outDir": "dist",
+      "outDir": "resource_dist/static",
       "assets": ["assets"],
       "index": "index.html",
       "main": "main.ts",

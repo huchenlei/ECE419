@@ -1,9 +1,9 @@
 package app_kvECS;
 
-import java.util.Map;
-import java.util.Collection;
-
 import ecs.IECSNode;
+
+import java.util.Collection;
+import java.util.Map;
 
 public interface IECSClient {
     /**

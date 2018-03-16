@@ -7,6 +7,8 @@ import ecs.IECSNode;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -18,6 +20,7 @@ public class ECSClient implements Runnable {
     private static final String PROMPT = "ecs> ";
     private BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
     private boolean running = false;
+
     private IECSClient ecs;
 
     public ECSClient(String configFileName) throws IOException {

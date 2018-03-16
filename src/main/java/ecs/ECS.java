@@ -6,6 +6,12 @@ import common.messages.KVAdminMessage;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import server.ServerMetaData;
 
 import java.io.BufferedReader;
@@ -21,6 +27,9 @@ import java.util.stream.Collectors;
 /**
  * This class handles core functionality of external configuration service
  */
+
+@Service
+@PropertySource("classpath:/app.properties")
 public class ECS implements IECSClient {
     private static final String SERVER_JAR = "KVServer.jar";
     // Assumes that the jar file is located at the same dir on the remote server
@@ -45,8 +54,17 @@ public class ECS implements IECSClient {
 
     /**
      * Roster of all service that are initialized(assigned cacheStrategy and cacheSize)
+     * Used for interface provided by professor
+     *
+     * @Deprecated
      */
     private Map<String, IECSNode> nodeTable = new HashMap<>();
+
+    /**
+     * In charge of all nodes no matter the state
+     * Used for web monitor program
+     */
+    private Map<String, ECSNode> generalNodeTable = new HashMap<>();
 
     /**
      * HashRing object responsible to update the hash range of each ECSNode
@@ -64,7 +82,13 @@ public class ECS implements IECSClient {
         }
     }
 
-    public ECS(String configFileName) throws IOException {
+    public static class ECSException extends Exception {
+        public ECSException(String msg) {
+            super(msg);
+        }
+    }
+
+    public ECS(@Value("${ecsConfigFile}") String configFileName) throws IOException {
         BufferedReader configReader = new BufferedReader(new FileReader(new File(configFileName)));
 
         String currentLine;
@@ -78,13 +102,10 @@ public class ECS implements IECSClient {
             String name = tokens[0];
             String ip = tokens[1];
             Integer port = Integer.parseInt(tokens[2]);
-            if (namePool.contains(name)) {
-                logger.warn(name + " already exists. Server name must be unique, please check for duplications");
-            } else {
-                ECSNode newNode = new ECSNode(name, ip, port);
-                nodePool.add(newNode);
-                namePool.add(name);
-                logger.info(newNode + " added to node pool");
+            try {
+                createNode(name, ip, port);
+            } catch (ECSException e) {
+                logger.warn(e.getMessage());
             }
         }
 
@@ -103,6 +124,25 @@ public class ECS implements IECSClient {
         }
 
         updateMetadata();
+    }
+
+    /* ---------- Following are methods exposing ecs details to web console ---------- */
+    public List<RawECSNode> getAllNodes() {
+        return new ArrayList<>(generalNodeTable.values());
+    }
+
+    public RawECSNode getNodeByName(String name) {
+        return generalNodeTable.get(name);
+    }
+
+    public void createNode(String name, String host, Integer port) throws ECSException {
+        if (generalNodeTable.containsKey(name)) {
+            throw new ECSException(name + " already exists. Server name must be unique");
+        }
+        ECSNode newNode = new ECSNode(name, host, port);
+        nodePool.add(newNode);
+        generalNodeTable.put(name, newNode);
+        logger.info(newNode + " added to node pool");
     }
 
     @Override
@@ -354,7 +394,7 @@ public class ECS implements IECSClient {
      *
      * @return Json Array
      */
-    private String getHashRingJson() {
+    public String getHashRingJson() {
         List<RawECSNode> activeNodes = nodeTable.values().stream()
                 .map(n -> (ECSNode) n)
                 .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))

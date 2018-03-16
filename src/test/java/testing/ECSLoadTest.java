@@ -94,7 +94,7 @@ public class ECSLoadTest extends TestCase {
      * Create the ECS object
      */
     public void test01Creation() throws IOException {
-        ecs = new ECS("./ecs.config");
+        ecs = new ECS("ecs.config");
         assertNotNull(ecs);
     }
 

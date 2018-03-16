@@ -44,7 +44,7 @@ public class ECSBasicTest extends TestCase {
     No client data interaction is included
      */
     public void test01Creation() throws IOException {
-        ecs = new ECS("./ecs.config");
+        ecs = new ECS("ecs.config");
         new ECS("./src/test/resources/ecs_dup_name.config");
         try {
             new ECS("./src/test/resources/ecs_bad_format.config");

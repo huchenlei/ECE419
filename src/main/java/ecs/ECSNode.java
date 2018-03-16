@@ -23,7 +23,6 @@ public class ECSNode extends RawECSNode implements IECSNode {
         }
     }
 
-    private String hash = null;
     private ECSNode prev;
 
     public enum ServerStatus {
@@ -32,8 +31,6 @@ public class ECSNode extends RawECSNode implements IECSNode {
         STOP,
         ACTIVE,
     }
-
-    private ServerStatus status;
 
     public ServerStatus getStatus() {
         return status;
