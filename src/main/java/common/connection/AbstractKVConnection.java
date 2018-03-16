@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Objects;
 
 /**
  * Abstract layer of connection object for both server and client side
@@ -91,5 +92,19 @@ public abstract class AbstractKVConnection implements KVConnection {
                 + clientSocket.getPort() + ">: '"
                 + msg.getMsg().trim() + "'");
         return msg;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AbstractKVConnection that = (AbstractKVConnection) o;
+        return port == that.port &&
+                Objects.equals(address, that.address);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(address, port);
     }
 }

@@ -34,12 +34,12 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     private static Logger logger = Logger.getRootLogger();
 
-    private int port;
+    private int port = -1;
     private int cacheSize;
     private CacheStrategy strategy;
 
     private boolean running;
-    private ServerSocket serverSocket;
+    private ServerSocket serverSocket = null;
     private ServerSocket receiverSocket;
 
     private ServerStatus status;
@@ -62,6 +62,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     private KVCache cache;
     private KVPersistentStore store;
 
+    /**
+     * Forward put requests to server replicas
+     */
+    private KVServerForwarderManager forwarderManager;
 
     public String getHashRingString() {
         return hashRingString;
@@ -129,13 +133,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         String connectString = this.zkHostName + ":" + Integer.toString(this.zkPort);
         try {
             CountDownLatch sig = new CountDownLatch(0);
-            zk = new ZooKeeper(connectString, ECS.ZK_TIMEOUT, new Watcher() {
-                @Override
-                public void process(WatchedEvent event) {
-                    if (event.getState().equals(Event.KeeperState.SyncConnected)) {
-                        // connection fully established can proceed
-                        sig.countDown();
-                    }
+            zk = new ZooKeeper(connectString, ECS.ZK_TIMEOUT, event -> {
+                if (event.getState().equals(Event.KeeperState.SyncConnected)) {
+                    // connection fully established can proceed
+                    sig.countDown();
                 }
             });
             try {
@@ -604,7 +605,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 try {
                     Socket client = serverSocket.accept();
                     KVServerConnection conn = new KVServerConnection(this, client);
-                    conn.setPrompt(this.serverName);
                     new Thread(conn).start();
 
                     logger.info(prompt() + "Connected to "
@@ -615,20 +615,25 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 }
             }
         }
-        logger.info(prompt() + "Server shutdown successfully");
+        logger.info(prompt() + "Server Shutdown");
     }
 
     public boolean isRunning() {
         return running;
     }
 
+    public KVServerForwarderManager getForwarderManager() {
+        return forwarderManager;
+    }
+
     private boolean initializeServer() {
-        logger.info(prompt() + "Initialize server ...");
+        assert this.port != -1;
         try {
             serverSocket = new ServerSocket(port);
             logger.info(prompt() + "Server listening on port: "
                     + serverSocket.getLocalPort());
             this.port = serverSocket.getLocalPort();
+            this.forwarderManager = new KVServerForwarderManager(getHostname(), this.port);
             return true;
         } catch (IOException e) {
             logger.error(prompt() + "Error! Cannot open server socket:");

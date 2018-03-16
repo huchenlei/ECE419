@@ -26,11 +26,14 @@ import java.util.stream.Collectors;
  */
 public class KVServerConnection extends AbstractKVConnection implements Runnable {
     private KVServer kvServer;
+    private KVServerForwarderManager forwarderManager;
 
     public KVServerConnection(KVServer kvServer, Socket clientSocket) {
         this.kvServer = kvServer;
         this.clientSocket = clientSocket;
         this.open = true;
+        this.setPrompt(kvServer.getServerName());
+        this.forwarderManager = kvServer.getForwarderManager();
     }
 
     @Override
@@ -44,7 +47,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     KVMessage req = AbstractKVMessage.createMessage();
                     assert req != null;
                     req.decode(receiveMessage().getMsg());
-                    if (!((KVServer)kvServer).isRunning()) {
+                    if (!((KVServer) kvServer).isRunning()) {
                         disconnect();
                         return;
                     }
@@ -63,6 +66,32 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         }
     }
 
+
+    private boolean isResponsible(KVMessage m) {
+        ECSHashRing hashRing = kvServer.getHashRing();
+
+
+        ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
+        if (node == null) {
+            logger.error("HashRing: " + hashRing);
+        }
+
+        assert node != null;
+
+        String serverName = kvServer.getServerName();
+        Boolean responsible = node.getNodeName().equals(serverName);
+        if (m.getStatus().equals(KVMessage.StatusType.GET)) {
+            Collection<ECSNode> replicationNodes =
+                    hashRing.getReplicationNodes(node);
+            responsible = responsible || replicationNodes.stream()
+                    .map(ECSNode::getNodeName)
+                    .collect(Collectors.toList())
+                    .contains(serverName);
+
+        }
+        return responsible;
+    }
+
     /**
      * Parse the message string and dispatch to server action
      *
@@ -75,42 +104,15 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         res.setKey(m.getKey());
 
         if (kvServer.isDistributed()) {
-            ECSHashRing hashRing = kvServer.getHashRing();
             // stopped server can not handle any request
-            if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)
-                    || hashRing.empty()) {
+            ECSHashRing hashRing = kvServer.getHashRing();
+            if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)) {
+                assert hashRing.empty();
                 res.setValue("");
                 res.setStatus(KVMessage.StatusType.SERVER_STOPPED);
                 return res;
             }
-
-
-            ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
-            if (node == null) {
-                logger.error("HashRing: " + hashRing);
-            }
-
-            assert node != null;
-
-            String serverName = kvServer.getServerName();
-            Boolean responsible = true;
-            switch (m.getStatus()) {
-                case GET:
-                    Collection<ECSNode> replicationNodes =
-                            hashRing.getReplicationNodes(node);
-                    if (!replicationNodes.stream()
-                            .map(ECSNode::getNodeName)
-                            .collect(Collectors.toList())
-                            .contains(serverName)) {
-                        responsible = false;
-                    }
-                    break;
-                case PUT:
-                    if (!node.getNodeName().equals(serverName))
-                        responsible = false;
-            }
-
-            if (!responsible) {
+            if (!isResponsible(m)) {
                 res.setValue(kvServer.getHashRingString());
                 res.setStatus(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE);
                 return res;
@@ -144,7 +146,6 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
             case PUT_REPLICATE:
             case PUT: {
-
                 // if server locked, it can not handle put request
                 if (kvServer.getStatus().equals(IKVServer.ServerStatus.LOCK)) {
                     res.setValue("");
@@ -162,9 +163,6 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                         "".equals(m.getValue()) ||
                         // Empty string is not allowed as key or value on server side
                         // Value of empty string is supposed to be converted to "null" at the client side
-//                        m.getKey().matches(".*\\s.*") ||
-//                        m.getValue().matches(".*\\s.*") ||
-                        // The key or value can not contain any white space characters such as '\t', ' ' or '\n'
                         m.getKey().length() > KVServer.MAX_KEY ||
                         m.getValue().length() > KVServer.MAX_VAL
                     // The key or value can not exceed designated length
@@ -176,11 +174,15 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
                 try {
                     kvServer.putKV(m.getKey(), m.getValue());
+                    // Forward the message if its coordinator
+                    if (KVMessage.StatusType.PUT.equals(m.getStatus())) {
+                        forwarderManager.forward(m);
+                    }
                 } catch (Exception e) {
                     if ("null".equals(m.getValue()))
                         res.setStatus(KVMessage.StatusType.DELETE_ERROR);
                     else {
-                        logger.info("Failed to put kv " + e.getMessage());
+                        logger.warn("Failed to put kv " + e.getMessage());
                         res.setStatus(KVMessage.StatusType.PUT_ERROR);
                     }
                     break;

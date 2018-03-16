@@ -8,7 +8,6 @@ import ecs.ECSHashRing;
 import ecs.ECSNode;
 
 import java.io.IOException;
-import java.net.Socket;
 
 /**
  * Represents a store session(connection) from client to server.
@@ -47,7 +46,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         req.setStatus(KVMessage.StatusType.PUT);
         try {
             //if metadata is not null, find the server responsible for the key
-            reconnect(req);
+            dispatchToCorrectServer(req);
             sendMessage(new TextMessage(req.encode()));
             res.decode(receiveMessage().getMsg());
             res = handleNotResponsible(req, res);
@@ -73,7 +72,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         req.setStatus(KVMessage.StatusType.GET);
         //if metadata is not null, find the server responsible for the key
         try {
-            reconnect(req);
+            dispatchToCorrectServer(req);
             sendMessage(new TextMessage(req.encode()));
             res.decode(receiveMessage().getMsg());
             res = handleNotResponsible(req, res);
@@ -113,7 +112,9 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         }
     }
 
-    private void reconnect(KVMessage req) throws Exception {
+    private void dispatchToCorrectServer(KVMessage req) throws IOException {
+        if (hashRing == null) return;
+
         String hash = ECSNode.calcHash(req.getKey());
         ECSNode newServer = hashRing.getNodeByKey(hash);
         String addr = newServer.getNodeHost();
@@ -129,7 +130,6 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
 
     private KVMessage handleNotResponsible(KVMessage req, KVMessage res) throws Exception {
         if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
-
             String hashRingString = res.getValue();
             hashRing = new ECSHashRing(hashRingString);
             String hash = ECSNode.calcHash(res.getKey());

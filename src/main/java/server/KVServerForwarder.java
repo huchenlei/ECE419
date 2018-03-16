@@ -21,11 +21,10 @@ public class KVServerForwarder extends AbstractKVConnection {
             KVMessage.StatusType.DELETE_SUCCESS
     );
 
-    public KVServerForwarder(ECSNode node) throws IOException {
+    public KVServerForwarder(ECSNode node) {
         assert node != null;
         this.address = node.getNodeHost();
         this.port = node.getNodePort();
-        this.connect();
     }
 
     public void forward(KVMessage message) throws IOException, ForwardFailedException {
@@ -55,5 +54,15 @@ public class KVServerForwarder extends AbstractKVConnection {
         public ForwardFailedException(String msg) {
             super(msg);
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
     }
 }
