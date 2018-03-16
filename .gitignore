@@ -21,3 +21,13 @@ TEST*.txt
 
 # ecs config file
 ecs.config
+
+.gradle/
+gradle/
+
+# node libraries
+node_modules/
+dist/
+
+# build dir
+build/
