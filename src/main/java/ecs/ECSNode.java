@@ -137,9 +137,28 @@ public class ECSNode extends RawECSNode implements IECSNode {
             };
     }
 
+    /**
+     * Returns whether the hash is in hashRange of current node
+     * @param hash hash string
+     * @return boolean value
+     */
+    public boolean isHashInRange(String hash) {
+        String[] hexRange = this.getNodeHashRange();
+        if (hexRange == null) return false;
 
+        BigInteger lower = new BigInteger(hexRange[0], 16);
+        BigInteger upper = new BigInteger(hexRange[1], 16);
+        BigInteger k = new BigInteger(hash, 16);
 
-    public static boolean isKeyInRange(String key, String[] hexRange){
+        if (upper.compareTo(lower) <= 0) {
+            // The node is responsible for ring end
+            return k.compareTo(upper) <= 0 || k.compareTo(lower) > 0;
+        } else {
+            return k.compareTo(upper) <= 0 && k.compareTo(lower) > 0;
+        }
+    }
+
+    public static boolean isKeyInRange(String key, String[] hexRange) {
         String keyHash = calcHash(key);
         BigInteger lower = new BigInteger(hexRange[0], 16);
         BigInteger upper = new BigInteger(hexRange[1], 16);

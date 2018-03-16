@@ -5,10 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import org.apache.log4j.Logger;
 
 import java.math.BigInteger;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * This class wrap the ECS Nodes and provide an LinkedList container
@@ -199,6 +196,30 @@ public class ECSHashRing {
             result.add(next);
             current = next;
         }
+        return result;
+    }
+
+    /**
+     * With given hashRange, which nodes on this hashRing would be responsible
+     * for them
+     *
+     * @param hashRange a string of size 2 in the format of [LowerBound, HigherBound]
+     * @return ECSNode and the hash range the node is responsible in the range of
+     * hashRange provided
+     */
+    public Map<ECSNode, String[]> getHashRangeMapping(String[] hashRange) {
+        assert hashRange.length == 2;
+        Map<ECSNode, String[]> result = new HashMap<>();
+        ECSNode current = this.getNodeByKey(hashRange[0]);
+        result.put(current, new String[]{hashRange[0], current.getNodeHash()});
+
+        while (!current.isHashInRange(hashRange[1])) {
+            current = this.getNextNode(current);
+            result.put(current, current.getNodeHashRange());
+        }
+
+        result.put(current,
+                new String[]{current.getPrev().getNodeHash(), hashRange[1]});
         return result;
     }
 

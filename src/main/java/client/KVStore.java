@@ -98,8 +98,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
             if (newServer != null) {
                 this.address = newServer.getNodeHost();
                 this.port = newServer.getNodePort();
-                logger.info("Now connect to " + this.address);
-                logger.info("Now connect to " + this.port);
+                logger.info("Now connect to " + this.address + ":" + this.port);
                 connect();
                 if (req.getStatus().equals(KVMessage.StatusType.PUT)) {
                     return this.put(req.getKey(), req.getValue());

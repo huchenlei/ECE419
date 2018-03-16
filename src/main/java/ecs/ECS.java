@@ -405,36 +405,53 @@ public class ECS implements IECSClient {
         Set<ECSNode> newSet = nodes.stream()
                 .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.STOP))
                 .collect(Collectors.toSet());
+        // Servers that would be available after the batch operation
+        Set<ECSNode> newActiveSet = nodeTable.values().stream()
+                .map(n -> (ECSNode) n)
+                .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
+                .collect(Collectors.toSet());
+        newActiveSet.removeAll(removeSet);
+        newActiveSet.addAll(newSet);
+
+        ECSHashRing newHashRing = new ECSHashRing(
+                newActiveSet.stream().map(RawECSNode::new).collect(Collectors.toSet())
+        );
+
+        if (newHashRing.getSize() == 0) {
+            // All service gone no need to transfer data from existing server
+            logger.warn("Shutdown all servers, service offline");
+            return true;
+        }
 
         for (ECSNode node : nodes) {
             if (node.getStatus().equals(ECSNode.ServerStatus.ACTIVE)) {
                 // active server in storage will be stopped
-                // Its data transferring to "next" server available
-                ECSNode dest = findNextNodeAvailable(node, n -> !removeSet.contains(n));
-                if (dest != null) {
-                    logger.debug("Transferring data\nfrom: " + node + "\nto: " +
-                            dest);
-                    logger.debug("HashRange: " + node.getNodeHashRange()[0] + " -> "
-                            + node.getNodeHashRange()[1]);
-                    transferData(node, dest, node.getNodeHashRange());
-                } else {
-                    logger.warn("No server available to accept data from the deletion of node " + node);
-                    logger.warn("The node is the last node active, service down...");
+                // Its own data all replication data transferring to "next" servers available
+
+                if (removeSet.containsAll(hashRing.getReplicationNodes(node))) {
+                    // All replication and self is going to be removed
+                    // Need transferring data to new servers
+                    Map<ECSNode, String[]> hashRangeMapping =
+                            newHashRing.getHashRangeMapping(node.getNodeHashRange());
+
+                    for (Map.Entry<ECSNode, String[]> entry : hashRangeMapping.entrySet()) {
+                        assert !removeSet.contains(entry.getKey());
+                        ECSNode dest = entry.getKey();
+                        ECSNode src = node;
+                        String[] hashRange = entry.getValue();
+                        logger.debug("Transferring data\nfrom: " + src + "\nto: " +
+                                dest);
+                        logger.debug("HashRange: " + hashRange[0] + " -> "
+                                + hashRange[1]);
+                        transferData(src, dest, hashRange);
+                    }
                 }
-            } else if (node.getStatus().equals(ECSNode.ServerStatus.STOP)) {
-                // Stopped server will be activated
-                // Its next server will transfer data to it
-                ECSNode source = findNextNodeAvailable(node, n -> !newSet.contains(n));
-                if (source != null) {
-                    transferData(source, node, node.getNodeHashRange());
-                } else {
-                    logger.warn("No server exist yet. No data to transfer to node " + node);
-                }
-            } else {
+            } else if (!node.getStatus().equals(ECSNode.ServerStatus.STOP)) {
                 // Report error
                 logger.error("Invalid node status for data rearrangement " + node);
             }
         }
+
         return true;
     }
 
