@@ -3,6 +3,8 @@ package ecs;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class ECSDataDistributionManager {
     private ECSHashRing hashRing;
@@ -62,8 +64,6 @@ public class ECSDataDistributionManager {
                 hashRing.getResponsibleNodes(senderCoordinator);
 
         for (ECSNode coordinator : responsibleNodes) {
-            if (coordinator.equals(senderCoordinator)) return result;
-
             result.add(transferFromCoordinator(
                     coordinator, node, coordinator.getNodeHashRange()));
         }
@@ -81,7 +81,7 @@ public class ECSDataDistributionManager {
                 hashRing.getResponsibleNodes(node)) {
             result.add(transferToReplica(node, coordinator, coordinator.getNodeHashRange()));
         }
-
-        return result;
+        return result.stream()
+                .filter(Objects::nonNull).collect(Collectors.toList());
     }
 }

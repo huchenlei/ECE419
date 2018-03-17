@@ -9,6 +9,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import server.ServerMetaData;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -196,5 +197,15 @@ public class ECSDataTransferIssuer implements Watcher {
             logger.warn("Other unexpected event monitored " + event);
             logger.warn("Continue listening for progress");
         }
+    }
+
+    @Override
+    public String toString() {
+        return "ECSDataTransferIssuer{" +
+                "sender=" + sender +
+                ", receiver=" + receiver +
+                ", hashRange=" + Arrays.toString(hashRange) +
+                ", type=" + type +
+                '}';
     }
 }
