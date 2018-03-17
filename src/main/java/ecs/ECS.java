@@ -8,10 +8,7 @@ import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import server.ServerMetaData;
 
 import java.io.BufferedReader;
@@ -21,7 +18,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -463,100 +459,11 @@ public class ECS implements IECSClient {
             return true;
         }
 
-        for (ECSNode node : nodes) {
-            if (node.getStatus().equals(ECSNode.ServerStatus.ACTIVE)) {
-                // active server in storage will be stopped
-                // Its own data all replication data transferring to "next" servers available
-
-                if (removeSet.containsAll(hashRing.getReplicationNodes(node))) {
-                    // All replication and self is going to be removed
-                    // Need transferring data to new servers
-                    Map<ECSNode, String[]> hashRangeMapping =
-                            newHashRing.getHashRangeMapping(node.getNodeHashRange());
-
-                    for (Map.Entry<ECSNode, String[]> entry : hashRangeMapping.entrySet()) {
-                        assert !removeSet.contains(entry.getKey());
-                        ECSNode dest = entry.getKey();
-                        ECSNode src = node;
-                        String[] hashRange = entry.getValue();
-                        logger.debug("Transferring data\nfrom: " + src + "\nto: " +
-                                dest);
-                        logger.debug("HashRange: " + hashRange[0] + " -> "
-                                + hashRange[1]);
-                        transferData(src, dest, hashRange);
-                    }
-                }
-            } else if (!node.getStatus().equals(ECSNode.ServerStatus.STOP)) {
-                // Report error
-                logger.error("Invalid node status for data rearrangement " + node);
-            }
-        }
-
         return true;
     }
 
-    private ECSNode findNextNodeAvailable(ECSNode node, Predicate<ECSNode> condition) {
-        ECSNode dest = node;
-        Integer loopCounter = 0;
-        while (true) {
-            // Get next node on HashRing
-            dest = hashRing.getNextNode(dest);
-            if (condition.test(dest))
-                return dest;
-            if (dest.equals(node)) {
-                // HashRing exhausted
-                return null;
-            }
-            loopCounter++;
-            if (loopCounter > 2 * hashRing.getSize()) {
-                throw new ECSHashRing.HashRingException(ECSHashRing.LOOP_ERROR_STR);
-            }
-        }
-    }
 
     private boolean transferData(ECSNode from, ECSNode to, String[] hashRange) {
-        assert from != null;
-        assert to != null;
-        assert hashRange != null;
-        assert hashRange.length == 2;
-        try {
-            ECSMulticaster multicaster = new ECSMulticaster(zk, Collections.singletonList(to));
-            boolean ack = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.RECEIVE));
-
-            if (!ack) {
-                logger.error("Failed to ack receiver of data " + to);
-                logger.error("hash range is " + hashRange[0] + " to " + hashRange[1]);
-                return false;
-            }
-
-            logger.info("Confirmed receiver node " + to);
-
-            multicaster = new ECSMulticaster(zk, Collections.singletonList(from));
-            KVAdminMessage message = new KVAdminMessage(KVAdminMessage.OperationType.SEND);
-            message.setReceiverHost(to.getNodeHost());
-            message.setReceiverName(to.getNodeName());
-            message.setHashRange(hashRange);
-
-            ack = multicaster.send(message);
-
-            if (!ack) {
-                logger.error("Failed to ack sender of data " + from);
-                logger.error("hash range is " + hashRange[0] + " to " + hashRange[1]);
-                return false;
-            }
-
-            logger.info("Confirmed sender node " + from);
-
-            // Start listening sender's progress
-            ack = new ECSTransferListener(zk, from, to).start();
-            if (!ack) {
-                logger.error("Failed in data transferring");
-                return false;
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            return false;
-        }
         return true;
     }
 }

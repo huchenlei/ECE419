@@ -9,6 +9,8 @@ import org.apache.log4j.Logger;
 import org.junit.Before;
 import performance.DataParser;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -25,7 +27,7 @@ public class HashRingTest extends TestCase {
     }
 
     private static List<KVMessage> msgs =
-            DataParser.parseDataFrom("allen-p");
+            DataParser.parseDataFrom("allen-p/sent");
 
     @Before
     public void preTest() {
@@ -98,5 +100,29 @@ public class HashRingTest extends TestCase {
 
             assertTrue(ECSNode.isKeyInRange(msg.getKey(), node.getNodeHashRange()));
         }
+    }
+
+    public void testHashRangeBasic() {
+        ECSNode.HashRange range1 = new ECSNode.HashRange("100", "200");
+        ECSNode.HashRange range2 = new ECSNode.HashRange("150", "250");
+
+        String[] intersection = range1.intersection(range2).getStringRange();
+        assertEquals( "150", intersection[0]);
+        assertEquals("200", intersection[1]);
+
+        String[] union = range1.union(range2).getStringRange();
+        assertEquals("100", union[0]);
+        assertEquals("250", union[1]);
+
+        List<ECSNode.HashRange> remove1 = range1.remove(range2);
+        assertEquals(1, remove1.size());
+        String[] remove1_0 = remove1.get(0).getStringRange();
+
+        assertEquals("100", remove1_0[0]);
+        assertEquals("150", remove1_0[1]);
+
+        ECSNode.HashRange range3 = new ECSNode.HashRange("300", "400");
+        ECSNode.HashRange range4 = new ECSNode.HashRange("480", "500");
+        ECSNode.HashRange bigRange = new ECSNode.HashRange("0", "500");
     }
 }

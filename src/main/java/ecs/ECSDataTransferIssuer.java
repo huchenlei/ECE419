@@ -1,6 +1,7 @@
 package ecs;
 
 import com.google.gson.Gson;
+import common.messages.KVAdminMessage;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -8,19 +9,22 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import server.ServerMetaData;
 
+import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class ECSTransferListener implements Watcher {
+public class ECSDataTransferIssuer implements Watcher {
     // total timeout 2 hours
     public static final Integer MAX_TIMEOUT = 2 * 3600 * 1000;
     // 2s between 2 updates
     public static final Integer TIMEOUT = 10 * 1000;
 
     private static Logger logger = Logger.getRootLogger();
+
     private ZooKeeper zk;
     private ECSNode sender;
     private ECSNode receiver;
+    private String[] hashRange;
 
     private boolean senderComplete = false;
     private boolean receiverComplete = false;
@@ -32,14 +36,67 @@ public class ECSTransferListener implements Watcher {
 
     private CountDownLatch sig = null;
 
-    public ECSTransferListener(ZooKeeper zk, ECSNode sender, ECSNode receiver) {
-        this.zk = zk;
+    // TODO add support for data duplication
+    private TransferType type;
+
+    public enum TransferType {
+        TRANSFER, // delete local copy after transmission
+        DUPLICATE // keep local copy after transmission
+    }
+
+    public ECSNode getSender() {
+        return sender;
+    }
+
+    public ECSNode getReceiver() {
+        return receiver;
+    }
+
+    public String[] getHashRange() {
+        return hashRange;
+    }
+
+    public ECSDataTransferIssuer(ECSNode sender, ECSNode receiver, String[] hashRange, TransferType type) {
+        this.type = type;
         this.sender = sender;
         this.receiver = receiver;
+        this.hashRange = hashRange;
         this.prompt = sender.getNodeName() + "->" + receiver.getNodeName() + ": ";
     }
 
-    public boolean start() throws InterruptedException {
+    private boolean init() throws InterruptedException {
+        ECSMulticaster multicaster = new ECSMulticaster(zk, Collections.singletonList(receiver));
+        boolean ack = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.RECEIVE));
+
+        if (!ack) {
+            logger.error("Failed to ack receiver of data " + receiver);
+            logger.error("hash range is " + hashRange[0] + " to " + hashRange[1]);
+            return false;
+        }
+
+        logger.info("Confirmed receiver node " + receiver);
+
+        multicaster = new ECSMulticaster(zk, Collections.singletonList(sender));
+        KVAdminMessage message = new KVAdminMessage(KVAdminMessage.OperationType.SEND);
+        message.setReceiverHost(receiver.getNodeHost());
+        message.setReceiverName(receiver.getNodeName());
+        message.setHashRange(hashRange);
+
+        ack = multicaster.send(message);
+
+        if (!ack) {
+            logger.error("Failed to ack sender of data " + sender);
+            logger.error("hash range is " + hashRange[0] + " to " + hashRange[1]);
+            return false;
+        }
+
+        logger.info("Confirmed sender node " + sender);
+        return true;
+    }
+
+    public boolean start(ZooKeeper zk) throws InterruptedException {
+        this.zk = zk;
+        init();
         try {
             checkSender();
             if (senderComplete && receiverComplete) {

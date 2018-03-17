@@ -6,12 +6,14 @@ import org.apache.log4j.Logger;
 
 import java.math.BigInteger;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class wrap the ECS Nodes and provide an LinkedList container
  * for adding and removing nodes
  */
 public class ECSHashRing {
+    private List<ECSNode> activeNodes = new ArrayList<>();
     private Logger logger = Logger.getRootLogger();
     private ECSNode root = null;
     private Integer size = 0;
@@ -26,6 +28,10 @@ public class ECSHashRing {
 
     public Integer getSize() {
         return size;
+    }
+
+    public List<ECSNode> getActiveNodes() {
+        return activeNodes;
     }
 
     public ECSHashRing() {
@@ -123,6 +129,7 @@ public class ECSHashRing {
             node.setPrev(prev);
             loc.setPrev(node);
         }
+        this.activeNodes.add(node);
         this.size++;
     }
 
@@ -150,7 +157,9 @@ public class ECSHashRing {
             // remove the last element in hash ring
             root = null;
             size--;
+            activeNodes.remove(toRemove);
             assert size == 0;
+            assert activeNodes.size() == 0;
             return;
         } else if ((toRemove.equals(next) && !root.getNodeHash().equals(hash))
                 || !(next.getPrev().equals(toRemove))) {
@@ -162,6 +171,7 @@ public class ECSHashRing {
         if (root.equals(toRemove)) {
             root = next;
         }
+        this.activeNodes.remove(toRemove);
         this.size--;
     }
 
@@ -185,8 +195,47 @@ public class ECSHashRing {
         }
         size = 0;
         root = null;
+        activeNodes.clear();
     }
 
+    /**
+     * Get the node is in responsible for data replication of
+     * what other nodes
+     * @param node current node
+     * @return data nodes do NOT include node itself
+     */
+    public Collection<ECSNode> getResponsibleNodes(ECSNode node) {
+        Set<ECSNode> result = new HashSet<>();
+        ECSNode current = node;
+        for (int i = 0; i < REPLICATION_NUM; i++) {
+            ECSNode prev = current.getPrev();
+            result.add(prev);
+            current = prev;
+        }
+        return result;
+    }
+
+    public String[] getResponsibleRange(ECSNode node) {
+        ECSNode finalNode = node;
+
+        for (int i = 0; i < REPLICATION_NUM; i++) {
+            finalNode = finalNode.getPrev();
+            if (finalNode.getPrev().equals(node))
+                break;
+        }
+
+        return new String[] {
+                finalNode.getPrev().getNodeHash(),
+                node.getNodeHash()
+        };
+    }
+
+    /**
+     * Get the replications nodes which is responsible to store
+     * data replication for coordinator
+     * @param coordinator coordinator node
+     * @return data nodes excluding coordinator itself
+     */
     public Collection<ECSNode> getReplicationNodes(ECSNode coordinator) {
         // Use a set to prevent duplication of dup server
         Set<ECSNode> result = new HashSet<>();
@@ -197,6 +246,16 @@ public class ECSHashRing {
             current = next;
         }
         return result;
+    }
+
+    public ECSNode getLastReplication(ECSNode coordinator) {
+        ECSNode current = coordinator;
+        for (int i = 0; i < REPLICATION_NUM; i++) {
+            current = getNextNode(current);
+            if (current.equals(coordinator))
+                return null; // there is no last replication
+        }
+        return current;
     }
 
     /**

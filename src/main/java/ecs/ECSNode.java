@@ -5,7 +5,7 @@ import org.apache.log4j.Logger;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Pojo class representing node in ecs
@@ -136,36 +136,125 @@ public class ECSNode extends RawECSNode implements IECSNode {
 
     /**
      * Returns whether the hash is in hashRange of current node
+     *
      * @param hash hash string
      * @return boolean value
      */
     public boolean isHashInRange(String hash) {
         String[] hexRange = this.getNodeHashRange();
         if (hexRange == null) return false;
-
-        BigInteger lower = new BigInteger(hexRange[0], 16);
-        BigInteger upper = new BigInteger(hexRange[1], 16);
-        BigInteger k = new BigInteger(hash, 16);
-
-        if (upper.compareTo(lower) <= 0) {
-            // The node is responsible for ring end
-            return k.compareTo(upper) <= 0 || k.compareTo(lower) > 0;
-        } else {
-            return k.compareTo(upper) <= 0 && k.compareTo(lower) > 0;
-        }
+        return new HashRange(hexRange).inRange(hash);
     }
 
     public static boolean isKeyInRange(String key, String[] hexRange) {
         String keyHash = calcHash(key);
-        BigInteger lower = new BigInteger(hexRange[0], 16);
-        BigInteger upper = new BigInteger(hexRange[1], 16);
-        BigInteger k = new BigInteger(keyHash, 16);
+        return new HashRange(hexRange).inRange(keyHash);
+    }
 
-        if (upper.compareTo(lower) <= 0) {
-            // The node is responsible for ring end
-            return k.compareTo(upper) <= 0 || k.compareTo(lower) > 0;
-        } else {
-            return k.compareTo(upper) <= 0 && k.compareTo(lower) > 0;
+    public static class HashRange {
+        private BigInteger lower;
+        private BigInteger upper;
+
+        public HashRange(String[] bounds) {
+            this(bounds[0], bounds[1]);
+        }
+
+        public HashRange(String lower, String upper) {
+            this(new BigInteger(lower, 16),
+                    new BigInteger(upper, 16));
+        }
+
+        public HashRange(BigInteger lower, BigInteger upper) {
+            this.lower = lower;
+            this.upper = upper;
+        }
+
+        public HashRange(HashRange other) {
+            this.lower = other.lower;
+            this.upper = other.upper;
+        }
+
+        public String[] getStringRange() {
+            return new String[]{
+                    lower.toString(16),
+                    upper.toString(16)
+            };
+        }
+
+        public boolean inRange(String hash) {
+            BigInteger k = new BigInteger(hash, 16);
+            return inRange(k);
+        }
+
+        public boolean inRange(BigInteger k) {
+            if (upper.compareTo(lower) <= 0) {
+                // The node is responsible for ring end
+                return k.compareTo(upper) <= 0 || k.compareTo(lower) > 0;
+            } else {
+                return k.compareTo(upper) <= 0 && k.compareTo(lower) > 0;
+            }
+        }
+
+        public HashRange intersection(HashRange other) {
+            boolean lowerInRange = inRange(other.lower);
+            boolean upperInRange = inRange(other.upper);
+            if (lowerInRange && upperInRange) {
+                return new HashRange(other);
+            } else if ((!lowerInRange) && (!upperInRange)) {
+                return new HashRange(this);
+            } else if (lowerInRange) {
+                return new HashRange(other.lower, this.upper);
+            } else {
+                return new HashRange(this.lower, other.upper);
+            }
+        }
+
+        public HashRange union(HashRange other) {
+            boolean lowerInRange = inRange(other.lower);
+            boolean upperInRange = inRange(other.upper);
+            if (lowerInRange && upperInRange) {
+                return new HashRange(this);
+            } else if ((!lowerInRange) && (!upperInRange)) {
+                return new HashRange(other);
+            } else if (lowerInRange) {
+                return new HashRange(this.lower, other.upper);
+            } else {
+                return new HashRange(other.lower, this.upper);
+            }
+        }
+
+        public List<HashRange> remove(HashRange other) {
+            boolean lowerInRange = inRange(other.lower);
+            boolean upperInRange = inRange(other.upper);
+            ArrayList<HashRange> result = new ArrayList<>();
+            if (lowerInRange && upperInRange) {
+                result.add(new HashRange(other.upper, this.upper));
+                result.add(new HashRange(this.lower, other.lower));
+            } else if ((lowerInRange) || (upperInRange)) {
+                if (lowerInRange) {
+                    result.add(new HashRange(this.lower, other.lower));
+                } else {
+                    result.add(new HashRange(other.upper, this.upper));
+                }
+            } else {
+                result.add(new HashRange(this));
+            }
+            return result;
+        }
+
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            HashRange hashRange = (HashRange) o;
+            return Objects.equals(lower, hashRange.lower) &&
+                    Objects.equals(upper, hashRange.upper);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(lower, upper);
         }
     }
 }
