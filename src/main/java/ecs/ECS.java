@@ -65,12 +65,18 @@ public class ECS implements IECSClient {
     /**
      * HashRing object responsible to update the hash range of each ECSNode
      */
-    private ECSHashRing hashRing = new ECSHashRing();
+    private ECSHashRing hashRing;
+
+    /**
+     * Handling data transfer
+     */
+    private ECSDataDistributionManager manager;
 
     /**
      * ZooKeeper instance used to communicate with zk server
      */
     private ZooKeeper zk;
+
 
     public class ECSConfigFormatException extends RuntimeException {
         public ECSConfigFormatException(String msg) {
@@ -85,10 +91,12 @@ public class ECS implements IECSClient {
     }
 
     public ECS(@Value("${ecsConfigFile}") String configFileName) throws IOException {
+        this.hashRing = new ECSHashRing();
+        this.manager = new ECSDataDistributionManager(this.hashRing);
+
         BufferedReader configReader = new BufferedReader(new FileReader(new File(configFileName)));
 
         String currentLine;
-        Set<String> namePool = new HashSet<>();
         while ((currentLine = configReader.readLine()) != null) {
             String[] tokens = currentLine.split(" ");
             if (tokens.length != 3) {
@@ -154,10 +162,16 @@ public class ECS implements IECSClient {
             hashRing.addNode(n);
         }
 
-        rearrangeDataStorage(toStart);
+        boolean ret = true;
+        List<ECSDataTransferIssuer> transfers = toStart.stream()
+                .map(manager::addNode)
+                .flatMap(List::stream).collect(Collectors.toList());
+        for (ECSDataTransferIssuer transfer : transfers) {
+            ret &= transfer.start(zk);
+        }
 
         ECSMulticaster multicaster = new ECSMulticaster(zk, toStart);
-        boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.START));
+        ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.START));
 
         for (ECSNode n : toStart) {
             if (multicaster.getErrors().keySet().contains(n)) {
@@ -347,13 +361,17 @@ public class ECS implements IECSClient {
         toRemove.forEach(logger::info);
         logger.info("\n");
 
-        rearrangeDataStorage(toRemove.stream()
-                .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
-                .collect(Collectors.toList()));
-
-        ECSMulticaster multicaster = new ECSMulticaster(zk, toRemove);
-        boolean ret;
+        boolean ret = true;
         try {
+            List<ECSDataTransferIssuer> transfers = toRemove.stream()
+                    .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
+                    .map(manager::removeNode)
+                    .flatMap(List::stream).collect(Collectors.toList());
+            for (ECSDataTransferIssuer transfer : transfers) {
+                ret &= transfer.start(zk);
+            }
+
+            ECSMulticaster multicaster = new ECSMulticaster(zk, toRemove);
             ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -421,49 +439,6 @@ public class ECS implements IECSClient {
             e.printStackTrace();
             return false;
         }
-        return true;
-    }
-
-    /**
-     * for nodes that are ACTIVE:
-     * data are transferred from them to nearest valid node
-     * <p>
-     * for nodes that are STOP:
-     * data are transferred to them from nearest valid node
-     *
-     * @param nodes ECSNodes
-     * @return successful or not
-     */
-    private boolean rearrangeDataStorage(Collection<ECSNode> nodes) {
-        Set<ECSNode> removeSet = nodes.stream()
-                .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
-                .collect(Collectors.toSet());
-        Set<ECSNode> newSet = nodes.stream()
-                .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.STOP))
-                .collect(Collectors.toSet());
-        // Servers that would be available after the batch operation
-        Set<ECSNode> newActiveSet = nodeTable.values().stream()
-                .map(n -> (ECSNode) n)
-                .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
-                .collect(Collectors.toSet());
-        newActiveSet.removeAll(removeSet);
-        newActiveSet.addAll(newSet);
-
-        ECSHashRing newHashRing = new ECSHashRing(
-                newActiveSet.stream().map(RawECSNode::new).collect(Collectors.toSet())
-        );
-
-        if (newHashRing.getSize() == 0) {
-            // All service gone no need to transfer data from existing server
-            logger.warn("Shutdown all servers, service offline");
-            return true;
-        }
-
-        return true;
-    }
-
-
-    private boolean transferData(ECSNode from, ECSNode to, String[] hashRange) {
         return true;
     }
 }

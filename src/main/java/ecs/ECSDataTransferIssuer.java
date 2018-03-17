@@ -18,7 +18,7 @@ public class ECSDataTransferIssuer implements Watcher {
     // total timeout 2 hours
     public static final Integer MAX_TIMEOUT = 2 * 3600 * 1000;
     // 2s between 2 updates
-    public static final Integer TIMEOUT = 10 * 1000;
+    public static final Integer TIMEOUT = 2 * 1000;
 
     private static Logger logger = Logger.getRootLogger();
 
@@ -37,7 +37,6 @@ public class ECSDataTransferIssuer implements Watcher {
 
     private CountDownLatch sig = null;
 
-    // TODO add support for data duplication
     private TransferType type;
 
     public enum TransferType {
@@ -78,7 +77,11 @@ public class ECSDataTransferIssuer implements Watcher {
         logger.info("Confirmed receiver node " + receiver);
 
         multicaster = new ECSMulticaster(zk, Collections.singletonList(sender));
-        KVAdminMessage message = new KVAdminMessage(KVAdminMessage.OperationType.SEND);
+        KVAdminMessage.OperationType type =
+                this.type.equals(TransferType.TRANSFER) ?
+                        KVAdminMessage.OperationType.SEND
+                        : KVAdminMessage.OperationType.SEND_DUPLICATE;
+        KVAdminMessage message = new KVAdminMessage(type);
         message.setReceiverHost(receiver.getNodeHost());
         message.setReceiverName(receiver.getNodeName());
         message.setHashRange(hashRange);
@@ -97,7 +100,7 @@ public class ECSDataTransferIssuer implements Watcher {
 
     public boolean start(ZooKeeper zk) throws InterruptedException {
         this.zk = zk;
-        init();
+        if (!init()) return false;
         try {
             checkSender();
             if (senderComplete && receiverComplete) {

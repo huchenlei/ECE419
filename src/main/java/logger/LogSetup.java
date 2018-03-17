@@ -29,8 +29,8 @@ public class LogSetup {
      * @throws IOException if the log destination could not be found.
      */
     public LogSetup(String logdir, Level level) throws IOException {
-        this.logdir = logdir;
-        initialize(level);
+//        this.logdir = logdir;
+//        initialize(level);
         active = true;
     }
 

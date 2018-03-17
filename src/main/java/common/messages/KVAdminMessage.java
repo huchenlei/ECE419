@@ -15,6 +15,7 @@ public class KVAdminMessage implements Encodable, Decodable {
         UPDATE, // Update metadata repo of this server
         RECEIVE, // Open a socket for transferring data
         SEND, // Send data to target host and port in certain hash range
+        SEND_DUPLICATE, // Send data and keep local copy
     }
 
     private OperationType operationType;
