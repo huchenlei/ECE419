@@ -1,0 +1,12 @@
+<ivy-module version="2.0">
+    <info organisation="org.apache" module="ECE419"/>
+    <configurations>
+        <conf name="compile" description="compile dependencies"/>
+        <conf name="runtime" description="runtime dependencies" extends="compile"/>
+        <conf name="test" description="test dependencies" extends="runtime"/>
+    </configurations>
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot -->
+        <dependency org="org.springframework.boot" name="spring-boot" rev="2.0.0.RELEASE"/>
+    </dependencies>
+</ivy-module>

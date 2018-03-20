@@ -80,7 +80,8 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
         String serverName = kvServer.getServerName();
         Boolean responsible = node.getNodeName().equals(serverName);
-        if (m.getStatus().equals(KVMessage.StatusType.GET)) {
+        if (m.getStatus().equals(KVMessage.StatusType.GET)
+                || m.getStatus().equals(KVMessage.StatusType.PUT_REPLICATE)) {
             Collection<ECSNode> replicationNodes =
                     hashRing.getReplicationNodes(node);
             responsible = responsible || replicationNodes.stream()

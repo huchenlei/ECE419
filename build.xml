@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project basedir="." default="build-jar" name="KVService">
+<project basedir="." default="build-jar" name="KVService"
+         xmlns:ivy="antlib:org.apache.ivy.ant">
 
     <property environment="env"/>
     <property name="debuglevel" value="source,lines,vars"/>
@@ -7,29 +8,48 @@
     <property name="source" value="1.8"/>
 
     <property name="build.dir" value="bin"/>
-    <property name="src.dir" value="src"/>
+    <property name="src.dir" value="src/main/java"/>
     <property name="lib.dir" value="libs"/>
     <property name="log.dir" value="logs"/>
-
+    <property name="repo.dir" value="${user.home}/ivy"/>
     <property name="server.jar.file" value="KVServer.jar"/>
     <property name="server.manifest.file" value="MANIFEST_SERVER.MF"/>
     <property name="client.jar.file" value="KVClient.jar"/>
     <property name="client.manifest.file" value="MANIFEST_CLIENT.MF"/>
-    <property name="ecs.jar.file"      value="ecs.jar"/>
+    <property name="ecs.jar.file" value="ecs.jar"/>
     <property name="ecs.manifest.file" value="MANIFEST_ECS.MF"/>
 
     <property name="server.main.class" value="app_kvServer.KVServer"/>
     <property name="client.main.class" value="app_kvClient.KVClient"/>
     <property name="ecs.main.class" value="app_kvECS.ECSClient"/>
 
+    <!-- install ivy if you don't have ivyide-->
+    <target name="ivy" description="Install ivy">
+        <mkdir dir="${user.home}/.ant/lib"/>
+        <get dest="${user.home}/.ant/lib/ivy.jar"
+             src="http://search.maven.org/remotecontent?filepath=org/apache/ivy/ivy/2.4.0-rc1/ivy-2.4.0-rc1.jar"/>
+    </target>
+
+    <!-- ivy end -->
+    <target name="resolve">
+        <mkdir dir="${repo.dir}"/>
+        <property name="ivy.default.ivy.user.dir" value="${repo.dir}"/>
+        <ivy:resolve/>
+        <ivy:cachepath pathid="compile.path" conf="compile"/>
+        <ivy:cachepath pathid="runtime.path" conf="runtime"/>
+        <ivy:cachepath pathid="test.path" conf="test"/>
+    </target>
+
     <path id="external.jars">
         <fileset dir="${lib.dir}" includes="**/*.jar"/>
+        <fileset dir="${repo.dir}" includes="**/*.jar"/>
     </path>
 
     <path id="project.classpath">
-        <pathelement location="${src.dir}"/>
+        <!--<pathelement location="${src.dir}"/>-->
         <path refid="external.jars"/>
     </path>
+
 
     <target name="init">
         <mkdir dir="${build.dir}"/>
@@ -67,6 +87,7 @@
                source="${source}" target="${target}"
                classpathref="project.classpath" includeantruntime="false">
             <src path="${src.dir}"/>
+            <exclude name="**/web_console/**/*.java"/>
         </javac>
     </target>
 
