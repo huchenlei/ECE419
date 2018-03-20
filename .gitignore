@@ -23,7 +23,6 @@ TEST*.txt
 ecs.config
 
 .gradle/
-gradle/
 
 # node libraries
 node_modules/
