@@ -372,7 +372,8 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             }
 
             // re-register the watch
-            zk.getChildren(zkPath, this, null);
+            if (this.isRunning())
+                zk.getChildren(zkPath, this, null);
         } catch (KeeperException | InterruptedException e) {
             logger.debug(prompt() + "Unable to process the watcher event");
             e.printStackTrace();
@@ -512,8 +513,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         try {
             serverSocket.close();
             forwarderManager.clear();
+            zk.close();
         } catch (IOException e) {
             logger.debug(prompt() + "Unable to close socket on port: " + port, e);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
