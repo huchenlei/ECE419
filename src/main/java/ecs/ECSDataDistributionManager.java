@@ -29,13 +29,13 @@ public class ECSDataDistributionManager {
         assert responsibleRange.length == 2;
         assert responsibleRange[1].equals(coordinatorNodeHash);
 
-        if (hashRing.getSize() <= ECSHashRing.REPLICATION_NUM + 1) {
+        if (hashRing.getSize() <= ECSHashRing.REPLICATION_NUM) {
             result.add(new ECSDataTransferIssuer(senderCoordinator, node, responsibleRange));
             hashRing.addNode(node);
             return result;
         }
 
-        String[] transferRange = new String[]{node.getNodeHash(), responsibleRange[0]};
+        String[] transferRange = new String[]{responsibleRange[0], node.getNodeHash()};
         result.add(new ECSDataTransferIssuer(senderCoordinator, node,
                 transferRange));
 
