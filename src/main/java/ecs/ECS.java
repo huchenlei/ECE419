@@ -167,16 +167,14 @@ public class ECS implements IECSClient {
                 toStart.add(n);
             }
         }
-        for (ECSNode n : toStart) {
-            hashRing.addNode(n);
-        }
-
         boolean ret = true;
-        List<ECSDataTransferIssuer> transfers = toStart.stream()
-                .map(manager::addNode)
-                .flatMap(List::stream).collect(Collectors.toList());
-        for (ECSDataTransferIssuer transfer : transfers) {
-            ret &= transfer.start(zk);
+        for (ECSNode n : toStart) {
+            List<ECSDataTransferIssuer> transfers = manager.addNode(n);
+            for (ECSDataTransferIssuer transfer : transfers) {
+                logger.info(transfer);
+                ret &= transfer.start(zk);
+            }
+            hashRing.addNode(n);
         }
 
         ECSMulticaster multicaster = new ECSMulticaster(zk, toStart);
@@ -376,12 +374,15 @@ public class ECS implements IECSClient {
 
         boolean ret = true;
         try {
-            List<ECSDataTransferIssuer> transfers = toRemove.stream()
+            for (ECSNode n : toRemove.stream()
                     .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
-                    .map(manager::removeNode)
-                    .flatMap(List::stream).collect(Collectors.toList());
-            for (ECSDataTransferIssuer transfer : transfers) {
-                ret &= transfer.start(zk);
+                    .collect(Collectors.toList())) {
+                List<ECSDataTransferIssuer> transfers = manager.addNode(n);
+                for (ECSDataTransferIssuer transfer : transfers) {
+                    logger.info(transfer);
+                    ret &= transfer.start(zk);
+                }
+                hashRing.addNode(n);
             }
 
             ECSMulticaster multicaster = new ECSMulticaster(zk, toRemove);
