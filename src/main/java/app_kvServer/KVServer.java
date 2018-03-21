@@ -7,10 +7,7 @@ import ecs.ECSHashRing;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import server.*;
 import server.cache.KVCache;
@@ -78,7 +75,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     /**
      * Start KV Server at given port
      *
-     * @param port      given port for storage server to operate
+     * @param port      giremainFileven port for storage server to operate
      * @param cacheSize specifies how many key-value pairs the server is allowed
      *                  to keep in-memory
      * @param strategy  specifies the cache replacement strategy in case the cache
@@ -182,7 +179,19 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 }
             }
         } catch (InterruptedException | KeeperException e) {
-            logger.debug(prompt() + "Unable to get child nodes");
+            logger.error(prompt() + "Unable to get child nodes");
+            e.printStackTrace();
+        }
+
+
+        try {
+            // add an alive node for failure detection
+            if (zk.exists(zkPath + "/alive", false) == null) {
+                zk.create(zkPath + "/alive", "".getBytes(),
+                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+            }
+        } catch (KeeperException|InterruptedException e) {
+            logger.error(prompt() + "Unable to create an ephemeral node");
             e.printStackTrace();
         }
 
@@ -326,8 +335,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     logger.info(prompt() + "Server" + zkPath + "start sending....");
 
                     // send data
-                    sendData(message.getHashRange(), message.getReceiverHost(), receiverPort);
+                    sendData(message.getHashRange(), message.getReceiverHost(), receiverPort, false);
 
+                    break;
+
+                case DELETE:
+                    ((KVIterateStore) this.store).deleteData(message.getHashRange());
+                    this.clearCache();
                     break;
 
                 case START:
@@ -464,6 +478,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public void clearCache() {
+        logger.info(prompt() + "Cache cleared");
         cache.clear();
     }
 
@@ -545,7 +560,12 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     }
 
+
     public boolean sendData(String[] hashRange, String targetHost, int targetPort) {
+        return sendData(hashRange, targetHost, targetPort, true);
+    }
+
+    public boolean sendData(String[] hashRange, String targetHost, int targetPort, boolean shouldDelete) {
         try {
             this.lockWrite();
 
@@ -581,7 +601,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             out.close();
             clientSocket.close();
 
-            ((KVIterateStore) this.store).afterMoveData();
+            ((KVIterateStore) this.store).afterMoveData(shouldDelete);
+
+            if (shouldDelete){
+                this.clearCache();
+            }
 
             this.unlockWrite();
 

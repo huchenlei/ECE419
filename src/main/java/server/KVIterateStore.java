@@ -152,9 +152,6 @@ public class KVIterateStore implements KVPersistentStore {
                     line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
                     this.startOffset = this.endOffset;
                     this.endOffset = raf.getFilePointer();
-                    if (line.contains("<24442933.1075855691664")) {
-                        int a = 2;
-                    }
                     if (line.isEmpty()) {
                         System.out.println("how could it be");
                         continue;
@@ -162,7 +159,7 @@ public class KVIterateStore implements KVPersistentStore {
                     String[] strs = line.split(DELIM);
                     if (strs.length != 2) {
                         raf.close();
-                        throw new IOException(prompt + "Invalid Entry found: " + line);
+                        throw new IOException(prompt + "Invalid Entry found when getting data: " + line);
                     }
                     curKey = decodeValue(strs[0]);
                     curValue = strs[1];
@@ -209,82 +206,153 @@ public class KVIterateStore implements KVPersistentStore {
         return this.dir + "/" + this.fileName;
     }
 
-    public void preMoveData(String[] hashRange) {
-        File moveFile = new File(getfileName() + MOVE_SUFFIX);
-        File remainFile = new File(getfileName() + REMAIN_SUFFIX);
+    public void deleteData(String[] hashRange) {
+        synchronized(this) {
+            File remainFile = new File(getfileName() + REMAIN_SUFFIX);
+            try {
+                remainFile.createNewFile();
+                RandomAccessFile remainRaf = new RandomAccessFile(remainFile, "rw");
+                RandomAccessFile raf = new RandomAccessFile(this.storageFile, "r");
 
-        try {
-            moveFile.createNewFile();
-            remainFile.createNewFile();
+                // insert remain data
+                // read original file line by line
+                String line, curKey, curValue;
+                while ((line = raf.readLine()) != null) {
+                    // convert line from ISO to UTF-8
+                    line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
+                    if (line.isEmpty()) {
+                        System.out.println("how could it be");
+                        continue;
+                    }
+                    String[] strs = line.split(DELIM);
+                    if (strs.length != 2) {
+                        raf.close();
+                        throw new IOException(prompt + "Invalid Entry found when deleting: " + line);
+                    }
+                    curKey = strs[0];
+                    curValue = strs[1];
+                    byte[] stringBytes = (curKey + DELIM + curValue + "\r\n").getBytes("UTF-8");
+                    String oriKey = decodeValue(curKey);
+                    // append to move file
+                    if (!ECSNode.isKeyInRange(oriKey, hashRange)) {
+                        long offset = remainRaf.length();
+                        remainRaf.seek(offset);
+                        remainRaf.write(stringBytes);
+                    }
+                }
+                raf.close();
+                remainRaf.close();
 
-            RandomAccessFile moveRaf = new RandomAccessFile(moveFile, "rw");
-            RandomAccessFile remainRaf = new RandomAccessFile(remainFile, "rw");
-            RandomAccessFile raf = new RandomAccessFile(this.storageFile,"r");
-
-            // read original file line by line
-            String line, curKey, curValue;
-            while ((line = raf.readLine()) != null) {
-                // convert line from ISO to UTF-8
-                line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
-                if (line.isEmpty()) {
-                    System.out.println("how could it be");
-                    continue;
-                }
-                String[] strs = line.split(DELIM);
-                if (strs.length != 2) {
-                    raf.close();
-                    throw new IOException(prompt + "Invalid Entry found: " + line);
-                }
-                curKey = strs[0];
-                curValue = strs[1];
-                byte[] stringBytes = (curKey + DELIM + curValue + "\r\n").getBytes("UTF-8");
-                String oriKey = decodeValue(curKey);
-                // append to move file
-                if (ECSNode.isKeyInRange(oriKey, hashRange)) {
-                    long offset = moveRaf.length();
-                    moveRaf.seek(offset);
-                    moveRaf.write(stringBytes);
-                }
-                // append to remain file
-                else {
-                    long offset = remainRaf.length();
-                    remainRaf.seek(offset);
-                    remainRaf.write(stringBytes);
-                }
-
+            } catch (IOException e) {
+                logger.error(prompt + "Unable to remove file", e);
+                e.printStackTrace();
             }
 
-            raf.close();
-            moveRaf.close();
-            remainRaf.close();
-
-        } catch (IOException e) {
-            logger.error(prompt + "Unable to create move and remain file", e);
+            // delete original file and rename the remain file
+            if (this.storageFile.delete()) {
+                logger.debug("Original file deleted");
+            } else {
+                logger.error("Unable to delete the original file");
+            }
+            if (remainFile.renameTo(new File(getfileName()))) {
+                logger.debug("successfully rename the remain file");
+            } else {
+                logger.error("Unable to rename the remain file");
+            }
         }
 
     }
 
-    public void afterMoveData() {
-        File moveFile = new File(getfileName() + MOVE_SUFFIX);
-        File remainFile = new File(getfileName() + REMAIN_SUFFIX);
+    public void preMoveData(String[] hashRange) {
+        synchronized(this) {
+            File moveFile = new File(getfileName() + MOVE_SUFFIX);
+            File remainFile = new File(getfileName() + REMAIN_SUFFIX);
 
-        if (moveFile.delete()) {
-            logger.debug("Move file deleted");
-        } else {
-            logger.error("Unable to delete the move file");
+            try {
+                moveFile.createNewFile();
+                remainFile.createNewFile();
+
+                RandomAccessFile moveRaf = new RandomAccessFile(moveFile, "rw");
+                RandomAccessFile remainRaf = new RandomAccessFile(remainFile, "rw");
+                RandomAccessFile raf = new RandomAccessFile(this.storageFile, "r");
+
+                // read original file line by line
+                String line, curKey, curValue;
+                while ((line = raf.readLine()) != null) {
+                    // convert line from ISO to UTF-8
+                    line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
+                    if (line.isEmpty()) {
+                        System.out.println("how could it be");
+                        continue;
+                    }
+                    String[] strs = line.split(DELIM);
+                    if (strs.length != 2) {
+                        raf.close();
+                        throw new IOException(prompt + "Invalid Entry found when moving data: " + line);
+                    }
+                    curKey = strs[0];
+                    curValue = strs[1];
+                    byte[] stringBytes = (curKey + DELIM + curValue + "\r\n").getBytes("UTF-8");
+                    String oriKey = decodeValue(curKey);
+                    // append to move file
+                    if (ECSNode.isKeyInRange(oriKey, hashRange)) {
+                        long offset = moveRaf.length();
+                        moveRaf.seek(offset);
+                        moveRaf.write(stringBytes);
+                    }
+                    // append to remain file
+                    else {
+                        long offset = remainRaf.length();
+                        remainRaf.seek(offset);
+                        remainRaf.write(stringBytes);
+                    }
+
+                }
+                raf.close();
+                moveRaf.close();
+                remainRaf.close();
+
+            } catch (IOException e) {
+                logger.error(prompt + "Unable to create move and remain file", e);
+            }
         }
 
-        if (this.storageFile.delete()) {
-            logger.debug("Original file deleted");
-        } else {
-            logger.error("Unable to delete the original file");
-        }
-        if (remainFile.renameTo(new File(getfileName()))) {
-            logger.debug("successfully rename the remain file");
-        } else {
-            logger.error("Unable to rename the remain file");
-        }
+    }
 
+    public void afterMoveData(boolean shouldDelete) {
+        synchronized(this) {
+            File moveFile = new File(getfileName() + MOVE_SUFFIX);
+            File remainFile = new File(getfileName() + REMAIN_SUFFIX);
+
+            if (moveFile.delete()) {
+                logger.debug("Move file deleted");
+            } else {
+                logger.error("Unable to delete the move file");
+            }
+
+            // delete the original file and rename the remain file
+            if (shouldDelete) {
+                if (this.storageFile.delete()) {
+                    logger.debug("Original file deleted");
+                } else {
+                    logger.error("Unable to delete the original file");
+                }
+                if (remainFile.renameTo(new File(getfileName()))) {
+                    logger.debug("successfully rename the remain file");
+                } else {
+                    logger.error("Unable to rename the remain file");
+                }
+            }
+            else {
+                // delete the remain file
+                if (remainFile.delete()) {
+                    logger.debug("remain file deleted");
+                } else {
+                    logger.error("Unable to delete the remain file");
+                }
+            }
+
+        }
 
     }
 
