@@ -13,38 +13,6 @@ public class ECSDataDistributionManager {
         this.hashRing = hashRing;
     }
 
-
-    private ECSDataTransferIssuer transferFromCoordinator(
-            ECSNode coordinator, ECSNode receiver, String[] hashRange) {
-        ECSNode lastReplication = hashRing.getLastReplication(coordinator);
-        if (lastReplication == null) {
-            return new ECSDataTransferIssuer(
-                    coordinator, receiver, hashRange,
-                    ECSDataTransferIssuer.TransferType.DELETE
-            );
-        } else {
-            return new ECSDataTransferIssuer(
-                    lastReplication, receiver, hashRange,
-                    ECSDataTransferIssuer.TransferType.COPY
-            );
-        }
-    }
-
-    private ECSDataTransferIssuer transferToReplica(
-            ECSNode sender, ECSNode coordinator, String[] hashRange) {
-        ECSNode lastReplication = hashRing.getLastReplication(coordinator);
-        if (lastReplication == null
-                || hashRing.getNextNode(lastReplication).equals(coordinator)) {
-            // do not need to transfer data because there is no enough server
-            return null;
-        } else {
-            return new ECSDataTransferIssuer(
-                    sender, hashRing.getNextNode(lastReplication), hashRange,
-                    ECSDataTransferIssuer.TransferType.COPY
-            );
-        }
-    }
-
     public List<ECSDataTransferIssuer> addNode(ECSNode node) {
         List<ECSDataTransferIssuer> result = new ArrayList<>();
         ECSNode senderCoordinator = this.hashRing.getNodeByKey(node.getNodeHash());
@@ -53,34 +21,53 @@ public class ECSDataDistributionManager {
         if (senderCoordinator == null) return result;
 
         // handle coordinator data
-        String[] hashRange = new String[]{
-                senderCoordinator.getPrev().getNodeHash(),
-                node.getNodeHash()
-        };
-        result.add(transferFromCoordinator(senderCoordinator, node, hashRange));
+        String[] responsibleRange = this.hashRing.getResponsibleRange(senderCoordinator);
+        String coordinatorNodeHash = senderCoordinator.getNodeHash();
+        assert responsibleRange.length == 2;
+        assert responsibleRange[1].equals(coordinatorNodeHash);
+        String[] transferRange = new String[]{node.getNodeHash(), responsibleRange[0]};
 
-        // handle replication data
+        result.add(new ECSDataTransferIssuer(senderCoordinator, node,
+                transferRange, ECSDataTransferIssuer.TransferType.COPY));
+
+        // handle replication data (delete)
         Collection<ECSNode> responsibleNodes =
                 hashRing.getResponsibleNodes(senderCoordinator);
-
+        responsibleNodes.add(senderCoordinator);
+        String[] deleteRange = new String[]{coordinatorNodeHash, node.getNodeHash()};
         for (ECSNode coordinator : responsibleNodes) {
-            result.add(transferFromCoordinator(
-                    coordinator, node, coordinator.getNodeHashRange()));
+            result.add(new ECSDataTransferIssuer(coordinator, node,
+                    deleteRange, ECSDataTransferIssuer.TransferType.DELETE));
         }
 
         return result;
     }
 
+    private ECSNode getNewLastReplication(ECSNode node) {
+        return hashRing.getNextNode(hashRing.getLastReplication(node));
+    }
+
     public List<ECSDataTransferIssuer> removeNode(ECSNode node) {
         List<ECSDataTransferIssuer> result = new ArrayList<>();
-        // handle data of node itself
-        result.add(transferToReplica(node, node, node.getNodeHashRange()));
+
+        // Each node holding full data range
+        // No need to copy any other data
+        if (hashRing.getSize() == ECSHashRing.REPLICATION_NUM + 1) {
+            return result;
+        }
+
+        Collection<ECSNode> responsibleNodes = this.hashRing.getResponsibleNodes(node);
 
         // handle data replica of node
-        for (ECSNode coordinator :
-                hashRing.getResponsibleNodes(node)) {
-            result.add(transferToReplica(node, coordinator, coordinator.getNodeHashRange()));
+        for (ECSNode coordinator : responsibleNodes) {
+            result.add(new ECSDataTransferIssuer(coordinator,
+                    getNewLastReplication(coordinator), coordinator.getNodeHashRange(),
+                    ECSDataTransferIssuer.TransferType.COPY));
         }
+        result.add(new ECSDataTransferIssuer(hashRing.getNextNode(node),
+                getNewLastReplication(node), node.getNodeHashRange(),
+                ECSDataTransferIssuer.TransferType.COPY));
+
         return result.stream()
                 .filter(Objects::nonNull).collect(Collectors.toList());
     }

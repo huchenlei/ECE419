@@ -107,7 +107,7 @@ public class ECSDataTransferIssuer implements Watcher {
     }
 
     private boolean delete(ZooKeeper zk) throws InterruptedException {
-        ECSMulticaster multicaster = new ECSMulticaster(zk, Collections.singletonList(receiver));
+        ECSMulticaster multicaster = new ECSMulticaster(zk, Collections.singletonList(sender));
         KVAdminMessage msg = new KVAdminMessage(KVAdminMessage.OperationType.DELETE);
         msg.setHashRange(this.hashRange);
         return multicaster.send(msg);

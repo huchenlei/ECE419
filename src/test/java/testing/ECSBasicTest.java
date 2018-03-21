@@ -58,19 +58,6 @@ public class ECSBasicTest extends TestCase {
      * This testcase is no longer in use because ssh-ing to localhost and create
      * server instances is high un-debug-able
      */
-    /*public void testAddNodes() {
-        IECSNode node = ecs.addNode(CACHE_STRATEGY, CACHE_SIZE);
-        assertNotNull(node);
-
-        Collection<IECSNode> nodes =
-                ecs.addNodes(2, CACHE_STRATEGY, CACHE_SIZE);
-
-        assertNotNull(nodes);
-        assertEquals(2, nodes.size());
-
-        nodes = ecs.addNodes(BIG_SERVER_NUM, CACHE_STRATEGY, CACHE_SIZE);
-        assertNull(nodes);
-    }*/
     public void test02AddNodes() throws Exception {
         Collection<IECSNode> nodes =
                 ecs.setupNodes(BIG_SERVER_NUM, CACHE_STRATEGY, CACHE_SIZE);

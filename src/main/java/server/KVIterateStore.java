@@ -51,7 +51,7 @@ public class KVIterateStore implements KVPersistentStore {
     }
 
     private void deleteEntry(RandomAccessFile raf, long offset1, long offset2) throws IOException {
-        synchronized(this) {
+        synchronized (this) {
             RandomAccessFile rTemp = new RandomAccessFile(new File(this.dir + "/" + "." + this.fileName + "~"),
                     "rw");
             long fileSize = raf.length();
@@ -73,7 +73,7 @@ public class KVIterateStore implements KVPersistentStore {
     }
 
     private void updateEntry(RandomAccessFile raf, long offset1, long offset2, byte[] stringBytes) throws IOException {
-        synchronized(this) {
+        synchronized (this) {
             RandomAccessFile rTemp = new RandomAccessFile(new File(this.dir + "/" + "." + this.fileName + "~"),
                     "rw");
             long fileSize = raf.length();
@@ -139,7 +139,7 @@ public class KVIterateStore implements KVPersistentStore {
 
     @Override
     public String get(String key) throws Exception {
-        synchronized(this) {
+        synchronized (this) {
             assert (this.storageFile != null);
             String value = null;
             this.startOffset = 0;
@@ -207,7 +207,7 @@ public class KVIterateStore implements KVPersistentStore {
     }
 
     public void deleteData(String[] hashRange) {
-        synchronized(this) {
+        synchronized (this) {
             File remainFile = new File(getfileName() + REMAIN_SUFFIX);
             try {
                 remainFile.createNewFile();
@@ -264,7 +264,7 @@ public class KVIterateStore implements KVPersistentStore {
     }
 
     public void preMoveData(String[] hashRange) {
-        synchronized(this) {
+        synchronized (this) {
             File moveFile = new File(getfileName() + MOVE_SUFFIX);
             File remainFile = new File(getfileName() + REMAIN_SUFFIX);
 
@@ -319,8 +319,12 @@ public class KVIterateStore implements KVPersistentStore {
 
     }
 
+    public void afterMoveData() {
+        this.afterMoveData(true);
+    }
+
     public void afterMoveData(boolean shouldDelete) {
-        synchronized(this) {
+        synchronized (this) {
             File moveFile = new File(getfileName() + MOVE_SUFFIX);
             File remainFile = new File(getfileName() + REMAIN_SUFFIX);
 
@@ -342,8 +346,7 @@ public class KVIterateStore implements KVPersistentStore {
                 } else {
                     logger.error("Unable to rename the remain file");
                 }
-            }
-            else {
+            } else {
                 // delete the remain file
                 if (remainFile.delete()) {
                     logger.debug("remain file deleted");
