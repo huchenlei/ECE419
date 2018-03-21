@@ -40,8 +40,8 @@ public class ECSDataTransferIssuer implements Watcher {
     private TransferType type;
 
     public enum TransferType {
-        TRANSFER, // delete local copy after transmission
-        DUPLICATE // keep local copy after transmission
+        COPY, // keep local copy after transmission
+        DELETE // delete the content
     }
 
     public ECSNode getSender() {
@@ -77,11 +77,7 @@ public class ECSDataTransferIssuer implements Watcher {
         logger.info("Confirmed receiver node " + receiver);
 
         multicaster = new ECSMulticaster(zk, Collections.singletonList(sender));
-        KVAdminMessage.OperationType type =
-                this.type.equals(TransferType.TRANSFER) ?
-                        KVAdminMessage.OperationType.SEND
-                        : KVAdminMessage.OperationType.SEND_DUPLICATE;
-        KVAdminMessage message = new KVAdminMessage(type);
+        KVAdminMessage message = new KVAdminMessage(KVAdminMessage.OperationType.SEND);
         message.setReceiverHost(receiver.getNodeHost());
         message.setReceiverName(receiver.getNodeName());
         message.setHashRange(hashRange);
@@ -99,6 +95,32 @@ public class ECSDataTransferIssuer implements Watcher {
     }
 
     public boolean start(ZooKeeper zk) throws InterruptedException {
+        switch (this.type) {
+            case DELETE:
+                return delete(zk);
+            case COPY:
+                return copy(zk);
+            default:
+                logger.fatal("unrecognized transfer type");
+                return false;
+        }
+    }
+
+    private boolean delete(ZooKeeper zk) throws InterruptedException {
+        ECSMulticaster multicaster = new ECSMulticaster(zk, Collections.singletonList(receiver));
+        KVAdminMessage msg = new KVAdminMessage(KVAdminMessage.OperationType.DELETE);
+        msg.setHashRange(this.hashRange);
+        return multicaster.send(msg);
+    }
+
+    /**
+     * Copy data in given range from one server to another
+     *
+     * @param zk zookeeper instance
+     * @return successful or not
+     * @throws InterruptedException transmission interrupted
+     */
+    private boolean copy(ZooKeeper zk) throws InterruptedException {
         this.zk = zk;
         if (!init()) return false;
         try {

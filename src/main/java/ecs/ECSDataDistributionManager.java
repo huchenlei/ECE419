@@ -20,12 +20,12 @@ public class ECSDataDistributionManager {
         if (lastReplication == null) {
             return new ECSDataTransferIssuer(
                     coordinator, receiver, hashRange,
-                    ECSDataTransferIssuer.TransferType.DUPLICATE
+                    ECSDataTransferIssuer.TransferType.DELETE
             );
         } else {
             return new ECSDataTransferIssuer(
                     lastReplication, receiver, hashRange,
-                    ECSDataTransferIssuer.TransferType.TRANSFER
+                    ECSDataTransferIssuer.TransferType.COPY
             );
         }
     }
@@ -40,7 +40,7 @@ public class ECSDataDistributionManager {
         } else {
             return new ECSDataTransferIssuer(
                     sender, hashRing.getNextNode(lastReplication), hashRange,
-                    ECSDataTransferIssuer.TransferType.TRANSFER
+                    ECSDataTransferIssuer.TransferType.COPY
             );
         }
     }
