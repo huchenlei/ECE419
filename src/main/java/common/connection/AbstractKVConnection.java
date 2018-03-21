@@ -2,8 +2,8 @@ package common.connection;
 
 import common.messages.TextMessage;
 import org.apache.log4j.Logger;
+import org.apache.commons.codec.binary.Hex;
 
-//import javax.xml.soap.Text;
 import java.io.*;
 import java.net.Socket;
 import java.util.Objects;
@@ -69,12 +69,9 @@ public abstract class AbstractKVConnection implements KVConnection {
         while ((read_len = input.read(lenBuf, 0, TextMessage.LEN_DIGIT))
                 != TextMessage.LEN_DIGIT) {
             if (read_len == -1 && wait_count++ < max_wait) {
-                logger.warn("End of stream reached, wait 1s");
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                continue;
+            } else if (wait_count++ < max_wait){
+                logger.error("Message header(len " + read_len + ") incomplete " + Hex.encodeHexString(lenBuf));
                 continue;
             }
             throw new IOException("Invalid message format, can not read the length of packet!");

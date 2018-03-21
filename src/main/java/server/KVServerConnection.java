@@ -9,7 +9,7 @@ import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -39,8 +39,8 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
     @Override
     public void run() {
         try {
-            output = clientSocket.getOutputStream();
-            input = clientSocket.getInputStream();
+            this.input = new BufferedInputStream(clientSocket.getInputStream());
+            this.output = new BufferedOutputStream(clientSocket.getOutputStream());
 
             while (isOpen()) {
                 try {
