@@ -12,6 +12,8 @@
     <property name="lib.dir" value="libs"/>
     <property name="log.dir" value="logs"/>
     <property name="repo.dir" value="${user.home}/ivy"/>
+    <property name="resource.dir" value="src/main/resources/resource_dist"/>
+
     <property name="server.jar.file" value="KVServer.jar"/>
     <property name="server.manifest.file" value="MANIFEST_SERVER.MF"/>
     <property name="client.jar.file" value="KVClient.jar"/>
@@ -56,6 +58,9 @@
         <copy includeemptydirs="false" todir="${build.dir}">
             <fileset dir="${src.dir}">
                 <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+            <fileset dir="${resource.dir}">
                 <exclude name="**/*.java"/>
             </fileset>
         </copy>
