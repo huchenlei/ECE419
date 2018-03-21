@@ -173,8 +173,12 @@ public class ECS implements IECSClient {
             for (ECSDataTransferIssuer transfer : transfers) {
                 logger.info(transfer);
                 ret &= transfer.start(zk);
+
+                if (!ret) {
+                    logger.fatal("Failed to transfer data");
+                    return false;
+                }
             }
-            hashRing.addNode(n);
         }
 
         ECSMulticaster multicaster = new ECSMulticaster(zk, toStart);
@@ -372,17 +376,19 @@ public class ECS implements IECSClient {
         toRemove.forEach(logger::info);
         logger.info("\n");
 
+        logger.info("Current hashRing state:");
+        logger.info(hashRing);
+
         boolean ret = true;
         try {
             for (ECSNode n : toRemove.stream()
                     .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
                     .collect(Collectors.toList())) {
-                List<ECSDataTransferIssuer> transfers = manager.addNode(n);
+                List<ECSDataTransferIssuer> transfers = manager.removeNode(n);
                 for (ECSDataTransferIssuer transfer : transfers) {
                     logger.info(transfer);
                     ret &= transfer.start(zk);
                 }
-                hashRing.addNode(n);
             }
 
             ECSMulticaster multicaster = new ECSMulticaster(zk, toRemove);
@@ -394,9 +400,6 @@ public class ECS implements IECSClient {
 
         if (ret) {
             for (ECSNode n : toRemove) {
-                if (n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
-                    hashRing.removeNode(n);
-
                 n.setStatus(ECSNode.ServerStatus.OFFLINE);
                 nodeTable.remove(n.getNodeName());
             }

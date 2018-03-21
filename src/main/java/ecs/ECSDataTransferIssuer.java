@@ -18,7 +18,7 @@ public class ECSDataTransferIssuer implements Watcher {
     // total timeout 2 hours
     public static final Integer MAX_TIMEOUT = 2 * 3600 * 1000;
     // 2s between 2 updates
-    public static final Integer TIMEOUT = 2 * 1000;
+    public static final Integer TIMEOUT = 5 * 1000;
 
     private static Logger logger = Logger.getRootLogger();
 
@@ -56,11 +56,23 @@ public class ECSDataTransferIssuer implements Watcher {
         return hashRange;
     }
 
-    public ECSDataTransferIssuer(ECSNode sender, ECSNode receiver, String[] hashRange, TransferType type) {
-        this.type = type;
+    public ECSDataTransferIssuer(String[] hashRange) {
+        this.hashRange = hashRange;
+
+    }
+
+    public ECSDataTransferIssuer(ECSNode deleter, String[] hashRange) {
+        this(hashRange);
+        this.type = TransferType.DELETE;
+        this.sender = deleter;
+        this.prompt = this.sender.getNodeName() + " delete: ";
+    }
+
+    public ECSDataTransferIssuer(ECSNode sender, ECSNode receiver, String[] hashRange) {
+        this(hashRange);
+        this.type = TransferType.COPY;
         this.sender = sender;
         this.receiver = receiver;
-        this.hashRange = hashRange;
         this.prompt = sender.getNodeName() + "->" + receiver.getNodeName() + ": ";
     }
 
@@ -148,6 +160,9 @@ public class ECSDataTransferIssuer implements Watcher {
                 return true;
             } else if (receiverProgress.equals(preciver)
                     && senderProgress.equals(psender)) {
+                if (senderProgress.equals(100))
+                    // the action is complete
+                    return true;
                 // No data change
                 // Must be a timeout
                 logger.error("TIMEOUT triggered before receiving any progress on data transferring");

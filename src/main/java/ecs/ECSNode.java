@@ -54,6 +54,10 @@ public class ECSNode extends RawECSNode implements IECSNode {
         this(rn.name, rn.host, rn.port);
     }
 
+    public ECSNode(ECSNode n) {
+        this(n.name, n.host, n.port, n.prev);
+    }
+
     public void setPrev(ECSNode node) {
         this.prev = node;
     }

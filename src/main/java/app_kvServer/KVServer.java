@@ -213,8 +213,14 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                         hashRingString = new String(hashRingData);
                         hashRing = new ECSHashRing(hashRingString);
                         logger.info(prompt() + "Hash Ring updated");
+                        if(forwarderManager != null) {
+                            forwarderManager.update(hashRing);
+                        }
                     } catch (KeeperException | InterruptedException e) {
-                        logger.info(prompt() + "Unable to update the metadata node");
+                        logger.error(prompt() + "Unable to update the metadata node");
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        logger.error(prompt() + "Unable to update forward manager information");
                         e.printStackTrace();
                     }
                 }
@@ -506,12 +512,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         running = false;
         try {
             serverSocket.close();
+            forwarderManager.clear();
         } catch (IOException e) {
             logger.debug(prompt() + "Unable to close socket on port: " + port, e);
         }
-        // TODO Store everything in cache but not in storage
-        // TODO Currently there shall not be any concern on this issue
-        // TODO since we do store to disk prior to store to cache
     }
 
     @Override

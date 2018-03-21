@@ -215,6 +215,14 @@ public class ECSHashRing {
         return result;
     }
 
+    public ECSNode whoseLastReplication(ECSNode node) {
+        ECSNode current = node;
+        for (int i = 0; i < REPLICATION_NUM; i++) {
+            current = current.getPrev();
+        }
+        return current;
+    }
+
     public String[] getResponsibleRange(ECSNode node) {
         ECSNode finalNode = node;
 

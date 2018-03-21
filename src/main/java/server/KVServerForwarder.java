@@ -65,4 +65,12 @@ public class KVServerForwarder extends AbstractKVConnection {
     public boolean equals(Object obj) {
         return super.equals(obj);
     }
+
+    @Override
+    public String toString() {
+        return "KVServerForwarder{" +
+                "address='" + address + '\'' +
+                ", port=" + port +
+                '}';
+    }
 }

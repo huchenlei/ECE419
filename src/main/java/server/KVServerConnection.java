@@ -10,6 +10,7 @@ import ecs.ECSHashRing;
 import ecs.ECSNode;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -47,7 +48,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     KVMessage req = AbstractKVMessage.createMessage();
                     assert req != null;
                     req.decode(receiveMessage().getMsg());
-                    if (!((KVServer) kvServer).isRunning()) {
+                    if (!kvServer.isRunning()) {
                         disconnect();
                         return;
                     }
@@ -135,7 +136,10 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     if (ex != null)
                         res.setValue(ex.getMessage());
                     else
-                        res.setValue("Key not found on server " + kvServer.getServerName());
+                        res.setValue("Key(" +
+                                new BigInteger(1, m.getKey().getBytes()).toString(16)
+                                + ")(hash: " + ECSNode.calcHash(m.getKey())
+                                + ") not found on server " + kvServer.getServerName());
 
                     res.setStatus(KVMessage.StatusType.GET_ERROR);
                 } else {

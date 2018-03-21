@@ -37,6 +37,7 @@ public class KVServerForwarderManager {
         for (KVServerForwarder forwarder : this.forwarderList) {
             // Remove forwarder not longer active
             if (!newList.contains(forwarder)) {
+                logger.info("Forwarder disconnect from " + forwarder);
                 forwarder.disconnect();
                 this.forwarderList.remove(forwarder);
             }
@@ -44,6 +45,7 @@ public class KVServerForwarderManager {
 
         for (KVServerForwarder forwarder : newList) {
             if (!this.forwarderList.contains(forwarder)) {
+                logger.info("New forwarder connects to " + forwarder);
                 forwarder.connect();
                 this.forwarderList.add(forwarder);
             }
