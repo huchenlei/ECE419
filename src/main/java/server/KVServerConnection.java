@@ -55,7 +55,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     KVMessage res = handleMsg(req);
                     sendMessage(new TextMessage(res.encode()));
                 } catch (IOException ioe) {
-                    logger.error("Connection lost (" + this.clientSocket.getInetAddress().getHostName()
+                    logger.warn("Connection lost (" + this.clientSocket.getInetAddress().getHostName()
                             + ": " + this.clientSocket.getPort() + ")!");
                     this.open = false;
                 }
@@ -107,9 +107,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
         if (kvServer.isDistributed()) {
             // stopped server can not handle any request
-            ECSHashRing hashRing = kvServer.getHashRing();
             if (kvServer.getStatus().equals(IKVServer.ServerStatus.STOP)) {
-                assert hashRing.empty();
                 res.setValue("");
                 res.setStatus(KVMessage.StatusType.SERVER_STOPPED);
                 return res;

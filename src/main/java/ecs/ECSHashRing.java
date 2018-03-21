@@ -109,6 +109,7 @@ public class ECSHashRing {
     private static final BigInteger BIG_ONE = new BigInteger("1", 16);
 
     public ECSNode getNextNode(ECSNode n) {
+        assert n != null;
         return getNextNode(n.getNodeHash());
     }
 
@@ -262,11 +263,17 @@ public class ECSHashRing {
      * @return data nodes excluding coordinator itself
      */
     public Collection<ECSNode> getReplicationNodes(ECSNode coordinator) {
+        assert coordinator != null;
         // Use a set to prevent duplication of dup server
         Set<ECSNode> result = new HashSet<>();
         ECSNode current = coordinator;
         for (int i = 0; i < REPLICATION_NUM; i++) {
             ECSNode next = getNextNode(current);
+            if (next == null) {
+                logger.error("Invalid current node!");
+                logger.error(current);
+                return result;
+            }
             result.add(next);
             current = next;
         }

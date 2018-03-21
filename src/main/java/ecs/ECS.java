@@ -426,8 +426,6 @@ public class ECS implements IECSClient {
      * @return Json Array
      */
     public String getHashRingJson() {
-        logger.info("Get hash ring json");
-        logger.info(this.hashRing);
         List<RawECSNode> activeNodes = nodeTable.values().stream()
                 .map(n -> (ECSNode) n)
                 .filter(n -> n.getStatus().equals(ECSNode.ServerStatus.ACTIVE))
