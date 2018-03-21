@@ -31,6 +31,7 @@ public class ECSDataDistributionManager {
 
         if (hashRing.getSize() <= ECSHashRing.REPLICATION_NUM + 1) {
             result.add(new ECSDataTransferIssuer(senderCoordinator, node, responsibleRange));
+            hashRing.addNode(node);
             return result;
         }
 

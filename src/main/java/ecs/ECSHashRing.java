@@ -55,6 +55,20 @@ public class ECSHashRing {
                 }.getType()));
     }
 
+    public ECSNode getNodeByName(String name) {
+        ECSNode currentNode = root;
+        if (root == null) return null;
+        Integer loopCounter = 0;
+        while (true) {
+            if (currentNode.getNodeName().equals(name))
+                break;
+            currentNode = currentNode.getPrev();
+            if (loopCounter > 2 * size)
+                throw new HashRingException(LOOP_ERROR_STR);
+        }
+        return currentNode;
+    }
+
     /**
      * Get the node responsible for given key
      * Complexity O(n)
@@ -111,7 +125,7 @@ public class ECSHashRing {
      * @param node ecsnode instance
      */
     public void addNode(ECSNode node) {
-        logger.info("Adding node " + node);
+        logger.debug("Adding node " + node);
         if (root == null) {
             root = node;
             root.setPrev(node);
@@ -144,7 +158,7 @@ public class ECSHashRing {
      * @param hash md5 hash string
      */
     public void removeNode(String hash) {
-        logger.info("Removing node with hash " + hash);
+        logger.debug("Removing node with hash " + hash);
         ECSNode toRemove = getNodeByKey(hash);
         if (toRemove == null) {
             throw new HashRingException(
@@ -201,6 +215,7 @@ public class ECSHashRing {
     /**
      * Get the node is in responsible for data replication of
      * what other nodes
+     *
      * @param node current node
      * @return data nodes do NOT include node itself
      */
@@ -233,7 +248,7 @@ public class ECSHashRing {
                 break;
         }
 
-        return new String[] {
+        return new String[]{
                 finalNode.getPrev().getNodeHash(),
                 node.getNodeHash()
         };
@@ -242,6 +257,7 @@ public class ECSHashRing {
     /**
      * Get the replications nodes which is responsible to store
      * data replication for coordinator
+     *
      * @param coordinator coordinator node
      * @return data nodes excluding coordinator itself
      */

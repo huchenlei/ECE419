@@ -21,7 +21,7 @@ public class KVServerForwarderManager {
 
     public KVServerForwarderManager(String name, String host, Integer port) {
         this.forwarderList = new ArrayList<>();
-        this.self = new ECSNode(name + "_forwarder", host, port);
+        this.self = new ECSNode(name, host, port);
     }
 
     /**
@@ -31,7 +31,10 @@ public class KVServerForwarderManager {
      * @throws IOException socket connection issue
      */
     public void update(ECSHashRing hashRing) throws IOException {
-        ECSNode node = hashRing.getNodeByKey(self.getNodeHash());
+        ECSNode node = hashRing.getNodeByName(self.getNodeName());
+
+        logger.info(hashRing);
+
         List<KVServerForwarder> newList = hashRing.getReplicationNodes(node).stream()
                 .map(KVServerForwarder::new).collect(Collectors.toList());
 

@@ -3,6 +3,7 @@ import app_kvServer.KVServer;
 import client.KVStore;
 import common.KVMessage;
 import ecs.ECS;
+import ecs.ECSHashRing;
 import ecs.ECSNode;
 import ecs.IECSNode;
 import junit.framework.TestCase;
@@ -136,6 +137,8 @@ public class ECSLoadTest extends TestCase {
         }
         // Confirm data stored
         testGetData();
+
+        logger.info(new ECSHashRing(ecs.getHashRingJson()));
     }
 
     /**
