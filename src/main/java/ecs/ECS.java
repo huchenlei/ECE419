@@ -39,6 +39,7 @@ public class ECS implements IECSClient {
     public static final int ZK_TIMEOUT = 5000;
 
     public static final String ZK_SERVER_ROOT = "/kv_servers";
+    public static final String ZK_ACTIVE_ROOT = "/active";
     public static final String ZK_METADATA_ROOT = "/metadata";
 
     private static Logger logger = Logger.getRootLogger();
@@ -303,6 +304,10 @@ public class ECS implements IECSClient {
         try {
             if (zk.exists(ZK_SERVER_ROOT, false) == null) {
                 zk.create(ZK_SERVER_ROOT, "".getBytes(),
+                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+            if (zk.exists(ZK_ACTIVE_ROOT, false) == null) {
+                zk.create(ZK_ACTIVE_ROOT, "".getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             }
 
