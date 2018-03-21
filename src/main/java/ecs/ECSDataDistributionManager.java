@@ -17,10 +17,11 @@ public class ECSDataDistributionManager {
         List<ECSDataTransferIssuer> result = new ArrayList<>();
         ECSNode senderCoordinator = this.hashRing.getNodeByKey(node.getNodeHash());
 
-        hashRing.addNode(node);
-
         // Hash Ring empty
-        if (senderCoordinator == null) return result;
+        if (senderCoordinator == null) {
+            hashRing.addNode(node);
+            return result;
+        }
 
         // handle coordinator data
         String[] responsibleRange = this.hashRing.getResponsibleRange(senderCoordinator);
@@ -38,6 +39,7 @@ public class ECSDataDistributionManager {
                 transferRange));
 
         // handle replication data (delete)
+        hashRing.addNode(node);
         Collection<ECSNode> replicationNodes =
                 hashRing.getReplicationNodes(senderCoordinator);
         replicationNodes.add(senderCoordinator);

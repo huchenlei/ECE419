@@ -15,6 +15,7 @@ import java.util.List;
  * replication servers
  */
 public class KVServerForwarder extends AbstractKVConnection {
+    private String name;
     public static final List<KVMessage.StatusType> successStatus = Arrays.asList(
             KVMessage.StatusType.PUT_SUCCESS,
             KVMessage.StatusType.PUT_UPDATE,
@@ -25,6 +26,11 @@ public class KVServerForwarder extends AbstractKVConnection {
         assert node != null;
         this.address = node.getNodeHost();
         this.port = node.getNodePort();
+        this.name = node.getNodeName();
+    }
+
+    public String getName() {
+        return name;
     }
 
     public void forward(KVMessage message) throws IOException, ForwardFailedException {

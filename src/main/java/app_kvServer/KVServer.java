@@ -157,8 +157,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 ServerMetaData json = new Gson().fromJson(cacheString, ServerMetaData.class);
                 this.cacheSize = json.getCacheSize();
                 this.strategy = CacheStrategy.valueOf(json.getCacheStrategy());
-            }
-            else {
+            } else {
                 logger.error(prompt() + "Server node dose not exist " + zkPath);
             }
 
@@ -195,7 +194,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 logger.debug(prompt() + "Alive node created");
             }
 
-        } catch (KeeperException|InterruptedException e) {
+        } catch (KeeperException | InterruptedException e) {
             logger.error(prompt() + "Unable to create an ephemeral node");
             e.printStackTrace();
         }
@@ -205,7 +204,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, new Watcher() {
                 // handle hashRing update
                 public void process(WatchedEvent we) {
-                    if (!running){
+                    if (!running) {
                         return;
                     }
                     try {
@@ -213,7 +212,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                         hashRingString = new String(hashRingData);
                         hashRing = new ECSHashRing(hashRingString);
                         logger.info(prompt() + "Hash Ring updated");
-                        if(forwarderManager != null) {
+                        if (forwarderManager != null) {
                             forwarderManager.update(hashRing);
                         }
                     } catch (KeeperException | InterruptedException e) {
@@ -285,7 +284,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             // handling event, assume there is only one message named "message"
             byte[] data = zk.getData(path, false, null);
             KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
-            switch (message.getOperationType()){
+            switch (message.getOperationType()) {
                 case INIT:
                     zk.delete(path, zk.exists(path, false).getVersion());
                     logger.info(prompt() + "Server initiated");
@@ -617,7 +616,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
             ((KVIterateStore) this.store).afterMoveData(shouldDelete);
 
-            if (shouldDelete){
+            if (shouldDelete) {
                 this.clearCache();
             }
 
@@ -671,7 +670,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             logger.info(prompt() + "Server listening on port: "
                     + serverSocket.getLocalPort());
             this.port = serverSocket.getLocalPort();
-            this.forwarderManager = new KVServerForwarderManager(getHostname(), this.port);
+            this.forwarderManager = new KVServerForwarderManager(this.getServerName(), getHostname(), this.port);
             return true;
         } catch (IOException e) {
             logger.error(prompt() + "Error! Cannot open server socket:");

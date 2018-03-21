@@ -49,9 +49,10 @@ public abstract class AbstractKVMessage implements KVMessage {
         return null;
     }
 
+    StatusType status;
     String key;
     String value;
-    StatusType status;
+
 
     @Override
     public String getKey() {

@@ -212,6 +212,7 @@ public class ECSHashRing {
             result.add(prev);
             current = prev;
         }
+        result.remove(node);
         return result;
     }
 
@@ -253,6 +254,7 @@ public class ECSHashRing {
             result.add(next);
             current = next;
         }
+        result.remove(coordinator);
         return result;
     }
 

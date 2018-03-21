@@ -19,9 +19,9 @@ public class KVServerForwarderManager {
     private ECSNode self;
     private List<KVServerForwarder> forwarderList;
 
-    public KVServerForwarderManager(String host, Integer port) {
+    public KVServerForwarderManager(String name, String host, Integer port) {
         this.forwarderList = new ArrayList<>();
-        this.self = new ECSNode("Forwarder", host, port);
+        this.self = new ECSNode(name + "_forwarder", host, port);
     }
 
     /**
@@ -31,13 +31,14 @@ public class KVServerForwarderManager {
      * @throws IOException socket connection issue
      */
     public void update(ECSHashRing hashRing) throws IOException {
-        List<KVServerForwarder> newList = hashRing.getReplicationNodes(self).stream()
+        ECSNode node = hashRing.getNodeByKey(self.getNodeHash());
+        List<KVServerForwarder> newList = hashRing.getReplicationNodes(node).stream()
                 .map(KVServerForwarder::new).collect(Collectors.toList());
 
         for (KVServerForwarder forwarder : this.forwarderList) {
             // Remove forwarder not longer active
             if (!newList.contains(forwarder)) {
-                logger.info("Forwarder disconnect from " + forwarder);
+                logger.info(self.getNodeName() + " disconnect from " + forwarder);
                 forwarder.disconnect();
                 this.forwarderList.remove(forwarder);
             }
@@ -45,7 +46,8 @@ public class KVServerForwarderManager {
 
         for (KVServerForwarder forwarder : newList) {
             if (!this.forwarderList.contains(forwarder)) {
-                logger.info("New forwarder connects to " + forwarder);
+                logger.info(self.getNodeName() + " connects to " + forwarder.getName());
+                forwarder.setPrompt(self.getNodeName() + " to " + forwarder.getName());
                 forwarder.connect();
                 this.forwarderList.add(forwarder);
             }
