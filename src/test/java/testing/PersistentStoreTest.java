@@ -4,7 +4,9 @@ import ecs.ECSNode;
 import junit.framework.TestCase;
 import logger.LogSetup;
 import org.apache.log4j.Level;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 import performance.DataParser;
 import server.KVIterateStore;
 
@@ -14,10 +16,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class PersistentStoreTest extends TestCase {
     private KVIterateStore storeFile;
     private Exception ex;
-    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox");
+    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox").subList(0,20);
 
     @Override
     public void setUp() throws Exception {
@@ -31,7 +34,7 @@ public class PersistentStoreTest extends TestCase {
         storeFile = new KVIterateStore();
     }
     @Test
-    public void testPutGetRealData() throws Exception {
+    public void test01PutGetRealData() throws Exception {
         storeFile.clearStorage();
         String[] hashRange = new String[2];
         hashRange[0] = "358343938402ebb5110716c6e836f5a2";
@@ -63,12 +66,10 @@ public class PersistentStoreTest extends TestCase {
         assertEquals(file.length(),0);
 
 
-
-
     }
 
     @Test
-    public void testPutGet() throws Exception {
+    public void test02PutGet() throws Exception {
         storeFile.clearStorage();
         String value;
 
@@ -184,7 +185,7 @@ public class PersistentStoreTest extends TestCase {
     }
 
     @Test
-    public void testPreSend() {
+    public void test03PreSend() {
         MessageDigest md = null;
         try {
             md = MessageDigest.getInstance("MD5");
@@ -220,7 +221,7 @@ public class PersistentStoreTest extends TestCase {
     }
 
     @Test
-    public void testAfterSend(){
+    public void test04AfterSend(){
         storeFile.afterMoveData();
 
         try {
@@ -229,6 +230,33 @@ public class PersistentStoreTest extends TestCase {
             assertTrue(storeFile.inStorage("k94"));
         } catch (Exception e) {
             ex = e;
+        }
+
+    }
+
+    @Test
+    public void test05Delete() throws Exception {
+        storeFile.clearStorage();
+        String[] hashRange = new String[2];
+        hashRange[0] = "358343938402ebb5110716c6e836f5a2";
+        hashRange[1] = "a98109598267087dfc364fae4cf24578";
+
+        for (KVMessage msg : msgs) {
+            storeFile.put(msg.getKey(), msg.getValue());
+        }
+
+        String value;
+
+        storeFile.deleteData(hashRange);
+
+        for (KVMessage msg : msgs) {
+            value = storeFile.get(msg.getKey());
+            if (ECSNode.isKeyInRange(msg.getKey(), hashRange)) {
+                assertNull(value);
+            } else {
+                assertEquals(msg.getValue(), value);
+            }
+
         }
 
     }
