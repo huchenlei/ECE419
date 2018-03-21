@@ -2,6 +2,7 @@ package ecs;
 
 import app_kvECS.IECSClient;
 import com.google.gson.Gson;
+import common.NetworkUtils;
 import common.messages.KVAdminMessage;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
@@ -31,7 +32,8 @@ public class ECS implements IECSClient {
     // Assumes that the jar file is located at the same dir on the remote server
     private static final String JAR_PATH = new File(System.getProperty("user.dir"), SERVER_JAR).toString();
     // Assumes that ZooKeeper runs on localhost default port(2181)
-    public static final String ZK_HOST = "127.0.0.1";
+    public static final String LOCAL_HOST = NetworkUtils.getCurrentHost();
+    public static final String ZK_HOST = LOCAL_HOST;
     public static final String ZK_PORT = "2181";
     public static final String ZK_CONN = ZK_HOST + ":" + ZK_PORT;
 
@@ -106,6 +108,10 @@ public class ECS implements IECSClient {
             }
             String name = tokens[0];
             String ip = tokens[1];
+            // Convert localhost to actual host
+            if (ip.equals("localhost") || ip.equals("127.0.0.1"))
+                ip = LOCAL_HOST;
+
             Integer port = Integer.parseInt(tokens[2]);
             try {
                 createNode(name, ip, port);
@@ -129,6 +135,8 @@ public class ECS implements IECSClient {
         }
 
         updateMetadata();
+
+        logger.info("ECS started with ZooKeeper " + ZK_CONN);
     }
 
     /* ---------- Following are methods exposing ecs details to web console ---------- */
