@@ -31,63 +31,51 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         hashRing.addNode(node);
     }
 
-    @Override
-    public KVMessage put(String key, String value) throws Exception {
-
-        if ("".equals(value)) {
-            value = "null";
-        }
-        KVMessage req = AbstractKVMessage.createMessage();
+    private KVMessage request(KVMessage req) throws IOException {
         KVMessage res = AbstractKVMessage.createMessage();
         assert res != null;
-        assert req != null;
-        req.setKey(key);
-        req.setValue(value);
-        req.setStatus(KVMessage.StatusType.PUT);
         try {
             //if metadata is not null, find the server responsible for the key
             dispatchToCorrectServer(req);
             sendMessage(new TextMessage(req.encode()));
             res.decode(receiveMessage().getMsg());
             res = handleNotResponsible(req, res);
-            return res;
         } catch (IOException e) {
+            logger.warn(e.getMessage());
             res = handleShutdown(req);
             if (res == null) {
                 System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
+                disconnect();
                 throw e;
             }
-            return res;
         }
+        return res;
     }
 
     @Override
-    public KVMessage get(String key) throws Exception {
+    public KVMessage put(String key, String value) throws IOException {
+        if ("".equals(value)) {
+            value = "null";
+        }
         KVMessage req = AbstractKVMessage.createMessage();
-        KVMessage res = AbstractKVMessage.createMessage();
-        assert res != null;
+        assert req != null;
+        req.setKey(key);
+        req.setValue(value);
+        req.setStatus(KVMessage.StatusType.PUT);
+        return request(req);
+    }
+
+    @Override
+    public KVMessage get(String key) throws IOException {
+        KVMessage req = AbstractKVMessage.createMessage();
         assert req != null;
         req.setKey(key);
         req.setValue("");
         req.setStatus(KVMessage.StatusType.GET);
-        //if metadata is not null, find the server responsible for the key
-        try {
-            dispatchToCorrectServer(req);
-            sendMessage(new TextMessage(req.encode()));
-            res.decode(receiveMessage().getMsg());
-            res = handleNotResponsible(req, res);
-            return res;
-        } catch (IOException e) {
-            res = handleShutdown(req);
-            if (res == null) {
-                System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
-                throw e;
-            }
-            return res;
-        }
+        return request(req);
     }
 
-    private KVMessage handleShutdown(KVMessage req) throws Exception {
+    private KVMessage handleShutdown(KVMessage req) {
         disconnect();
         String hash = ECSNode.calcHash(req.getKey());
         ECSNode toRemove = hashRing.getNodeByKey(hash);
@@ -127,7 +115,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         connect();
     }
 
-    private KVMessage handleNotResponsible(KVMessage req, KVMessage res) throws Exception {
+    private KVMessage handleNotResponsible(KVMessage req, KVMessage res) throws IOException {
         if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
             String hashRingString = res.getValue();
             hashRing = new ECSHashRing(hashRingString);
@@ -153,7 +141,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         return res;
     }
 
-    private KVMessage resendRequest(String key, String value, KVMessage.StatusType request) throws Exception {
+    private KVMessage resendRequest(String key, String value, KVMessage.StatusType request) throws IOException {
         disconnect();
         connect();
         if (request.equals(KVMessage.StatusType.PUT)) {
