@@ -150,17 +150,21 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
         try {
             // the node should be created before init the server
-            Stat stat = zk.exists(zkPath, false);
+            if (zk.exists(zkPath, false) != null) {
+                // retrieve cache info from zookeeper
+                byte[] cacheData = zk.getData(zkPath, false, null);
+                String cacheString = new String(cacheData);
+                ServerMetaData json = new Gson().fromJson(cacheString, ServerMetaData.class);
+                this.cacheSize = json.getCacheSize();
+                this.strategy = CacheStrategy.valueOf(json.getCacheStrategy());
+            }
+            else {
+                logger.error(prompt() + "Server node dose not exist " + zkPath);
+            }
 
-            // retrieve cache info from zookeeper
-            byte[] cacheData = zk.getData(zkPath, false, null);
-            String cacheString = new String(cacheData);
-            ServerMetaData json = new Gson().fromJson(cacheString, ServerMetaData.class);
-            this.cacheSize = json.getCacheSize();
-            this.strategy = CacheStrategy.valueOf(json.getCacheStrategy());
 
         } catch (InterruptedException | KeeperException e) {
-            logger.debug(prompt() + "Unable to retrieve cache info from " + zkPath);
+            logger.error(prompt() + "Unable to retrieve cache info from " + zkPath);
             this.strategy = CacheStrategy.FIFO;
             this.cacheSize = 100;
             e.printStackTrace();
@@ -183,13 +187,14 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             e.printStackTrace();
         }
 
-
         try {
             // add an alive node for failure detection
-            if (zk.exists(zkPath + "/alive", false) == null) {
-                zk.create(zkPath + "/alive", "".getBytes(),
+            if (zk.exists(ECS.ZK_ACTIVE_ROOT, false) != null) {
+                zk.create(ECS.ZK_ACTIVE_ROOT + "/" + this.serverName, "".getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+                logger.debug(prompt() + "Alive node created");
             }
+
         } catch (KeeperException|InterruptedException e) {
             logger.error(prompt() + "Unable to create an ephemeral node");
             e.printStackTrace();
@@ -274,7 +279,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             // handling event, assume there is only one message named "message"
             byte[] data = zk.getData(path, false, null);
             KVAdminMessage message = new Gson().fromJson(new String(data), KVAdminMessage.class);
-            switch (message.getOperationType()) {
+            switch (message.getOperationType()){
                 case INIT:
                     zk.delete(path, zk.exists(path, false).getVersion());
                     logger.info(prompt() + "Server initiated");
@@ -340,8 +345,13 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     break;
 
                 case DELETE:
+                    logger.debug(prompt() + "Receive delete message");
+                    this.lockWrite();
                     ((KVIterateStore) this.store).deleteData(message.getHashRange());
+                    this.unlockWrite();
                     this.clearCache();
+                    logger.debug(prompt() + "Finish delete range");
+                    zk.delete(path, zk.exists(path, false).getVersion());
                     break;
 
                 case START:
