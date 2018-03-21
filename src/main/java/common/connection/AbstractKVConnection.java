@@ -4,9 +4,7 @@ import common.messages.TextMessage;
 import org.apache.log4j.Logger;
 
 //import javax.xml.soap.Text;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.Objects;
 
@@ -19,8 +17,8 @@ public abstract class AbstractKVConnection implements KVConnection {
     protected int port;
     protected boolean open;
     protected Socket clientSocket;
-    protected InputStream input;
-    protected OutputStream output;
+    protected BufferedInputStream input;
+    protected BufferedOutputStream output;
 
     protected static Logger logger = Logger.getRootLogger();
 
@@ -36,17 +34,17 @@ public abstract class AbstractKVConnection implements KVConnection {
 
     public void connect() throws IOException {
         this.clientSocket = new Socket(address, port);
-        this.input = clientSocket.getInputStream();
-        this.output = clientSocket.getOutputStream();
+        this.input = new BufferedInputStream(clientSocket.getInputStream());
+        this.output = new BufferedOutputStream(clientSocket.getOutputStream());
     }
 
     public void disconnect() {
         try {
             if (clientSocket != null) {
-                if (input != null)
-                    input.close();
-                if (output != null)
-                    output.close();
+                this.input.close();
+                this.output.close();
+                clientSocket.getInputStream().close();
+                clientSocket.getOutputStream().close();
                 clientSocket.close();
             }
         } catch (IOException e) {
@@ -65,7 +63,20 @@ public abstract class AbstractKVConnection implements KVConnection {
     public TextMessage receiveMessage() throws IOException {
         // Read the header of message to determine the length
         byte[] lenBuf = new byte[TextMessage.LEN_DIGIT];
-        if (input.read(lenBuf, 0, TextMessage.LEN_DIGIT) != TextMessage.LEN_DIGIT) {
+        int read_len;
+        int max_wait = 5;
+        int wait_count = 0;
+        while ((read_len = input.read(lenBuf, 0, TextMessage.LEN_DIGIT))
+                != TextMessage.LEN_DIGIT) {
+            if (read_len == -1 && wait_count++ < max_wait) {
+                logger.warn("End of stream reached, wait 1s");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                continue;
+            }
             throw new IOException("Invalid message format, can not read the length of packet!");
         }
         Integer len = Integer.parseInt(new String(lenBuf));
