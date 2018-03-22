@@ -9,6 +9,7 @@
 
     <property name="build.dir" value="bin"/>
     <property name="src.dir" value="src/main/java"/>
+    <property name="src.test.dir" value="src/test/java"/>
     <property name="lib.dir" value="libs"/>
     <property name="log.dir" value="logs"/>
     <property name="repo.dir" value="${user.home}/ivy"/>
@@ -48,7 +49,7 @@
     </path>
 
     <path id="project.classpath">
-        <!--<pathelement location="${src.dir}"/>-->
+        <pathelement location="${src.test.dir}"/>
         <path refid="external.jars"/>
     </path>
 
@@ -91,7 +92,7 @@
         <javac debug="true" debuglevel="${debuglevel}" destdir="bin"
                source="${source}" target="${target}"
                classpathref="project.classpath" includeantruntime="false">
-            <src path="${src.dir}"/>
+          <src path="${src.dir};${src.test.dir}"/>
             <exclude name="**/web_console/**/*.java"/>
         </javac>
     </target>
