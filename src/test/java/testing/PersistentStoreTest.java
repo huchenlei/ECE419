@@ -1,4 +1,5 @@
 package testing;
+
 import common.KVMessage;
 import ecs.ECSNode;
 import junit.framework.TestCase;
@@ -20,7 +21,7 @@ import java.util.List;
 public class PersistentStoreTest extends TestCase {
     private KVIterateStore storeFile;
     private Exception ex;
-    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox").subList(0,20);
+    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox").subList(0, 20);
 
     @Override
     public void setUp() throws Exception {
@@ -33,6 +34,7 @@ public class PersistentStoreTest extends TestCase {
         ex = null;
         storeFile = new KVIterateStore();
     }
+
     @Test
     public void test01PutGetRealData() throws Exception {
         storeFile.clearStorage();
@@ -50,11 +52,10 @@ public class PersistentStoreTest extends TestCase {
         String value;
 
         for (KVMessage msg : msgs) {
-            value =  storeFile.get(msg.getKey());
+            value = storeFile.get(msg.getKey());
             if (ECSNode.isKeyInRange(msg.getKey(), hashRange)) {
                 assertEquals(msg.getValue(), value);
-            }
-            else{
+            } else {
                 assertNull(value);
             }
 
@@ -63,7 +64,7 @@ public class PersistentStoreTest extends TestCase {
         storeFile.preMoveData(hashRange);
         storeFile.afterMoveData();
         File file = new File(storeFile.getfileName());
-        assertEquals(file.length(),0);
+        assertEquals(file.length(), 0);
 
 
     }
@@ -95,29 +96,6 @@ public class PersistentStoreTest extends TestCase {
         value = storeFile.get("what");
         assertTrue(value.equals("you\rhuo"));
 
-        // test UTF-8
-        storeFile.put("你好", "世界");
-        value = storeFile.get("你好");
-        assertTrue(value.equals("世界"));
-
-        // test delete
-        storeFile.put("wokeshuaile", "null");
-        value = storeFile.get("wokeshuaile");
-        assertNull(value);
-
-        storeFile.put("woke=shu\raile\n", "null");
-        value = storeFile.get("woke=shu\raile\n");
-        assertNull(value);
-
-        storeFile.put("hello", "null");
-        value = storeFile.get("hello");
-        assertTrue(value == null);
-
-        // test modify
-        storeFile.put("你好", "shijie");
-        value = storeFile.get("你好");
-        assertTrue(value.equals("shijie"));
-
         // delete an non existing key shall throw exception
         Exception ex = null;
         try {
@@ -147,31 +125,31 @@ public class PersistentStoreTest extends TestCase {
         assertTrue(value.equals(testString));
 
         // insert many entries
-        for (int i = 0; i < 100; i++){
+        for (int i = 0; i < 100; i++) {
             storeFile.put("k" + Integer.toString(i), "v" + Integer.toString(i));
         }
 
-        for (int i = 0; i < 100; i+=5){
+        for (int i = 0; i < 100; i += 5) {
             value = storeFile.get("k" + Integer.toString(i));
             assertNotNull(value);
-            assertTrue(("v"+Integer.toString(i)).equals(value));
+            assertTrue(("v" + Integer.toString(i)).equals(value));
         }
 
         // change values
-        for (int i = 0; i < 100; i+=2){
+        for (int i = 0; i < 100; i += 2) {
             storeFile.put("k" + Integer.toString(i), "cv" + Integer.toString(i));
         }
 
-        for (int i = 0; i < 100; i+=2){
+        for (int i = 0; i < 100; i += 2) {
             value = storeFile.get("k" + Integer.toString(i));
             assertNotNull(value);
-            assertTrue(("cv"+Integer.toString(i)).equals(value));
+            assertTrue(("cv" + Integer.toString(i)).equals(value));
         }
         // delete entries
-        for (int i = 0; i < 100; i+=5){
+        for (int i = 0; i < 100; i += 5) {
             storeFile.put("k" + Integer.toString(i), "null");
         }
-        for (int i = 0; i < 100; i+=5){
+        for (int i = 0; i < 100; i += 5) {
             value = storeFile.get("k" + Integer.toString(i));
             assertNull(value);
         }
@@ -221,7 +199,7 @@ public class PersistentStoreTest extends TestCase {
     }
 
     @Test
-    public void test04AfterSend(){
+    public void test04AfterSend() {
         storeFile.afterMoveData();
 
         try {
@@ -260,7 +238,6 @@ public class PersistentStoreTest extends TestCase {
         }
 
     }
-
 
 
 }

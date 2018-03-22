@@ -6,6 +6,7 @@ import org.apache.log4j.Logger;
 import java.io.*;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiPredicate;
 
@@ -226,6 +227,7 @@ public class KVIterateStore implements KVPersistentStore {
                 if (!areSame) break;
             }
 
+            Collections.reverse(selected);
             if (areSame) {
                 // Remove duplication
                 // Fault tolerance
