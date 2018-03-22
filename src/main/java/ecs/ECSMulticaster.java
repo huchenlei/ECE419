@@ -20,6 +20,8 @@ public class ECSMulticaster implements Watcher {
     private CountDownLatch sig;
 
     private Collection<ECSNode> nodes;
+    private Map<ECSNode, String> paths;
+
     private Map<ECSNode, String> errors;
     private Map<String, String> rawErrors;
 
@@ -37,8 +39,10 @@ public class ECSMulticaster implements Watcher {
 
     public boolean send(KVAdminMessage msg) throws InterruptedException {
         logMsg = "Receive node deletion, message receive confirmed " + msg;
+        paths = new HashMap<>();
         for (ECSNode n : nodes) {
             String msgPath = ECS.getNodePath(n) + "/message" + timestamp;
+            paths.put(n, msgPath);
             timestamp++;
             try {
                 zk.create(msgPath, msg.encode().getBytes(),
@@ -71,7 +75,31 @@ public class ECSMulticaster implements Watcher {
         for (Map.Entry<ECSNode, String> entry : errors.entrySet()) {
             logger.error(entry.getKey() + ": " + entry.getValue());
         }
-        return sigWait && (rawErrors.size() == 0);
+
+        boolean delivery = true;
+        if (!sigWait) {
+            // On timeout check all nodes
+            try {
+                delivery = checkDelivery();
+            } catch (KeeperException e) {
+                logger.error("failed to check message states");
+                delivery = false;
+                e.printStackTrace();
+            }
+        }
+        return delivery && (rawErrors.size() == 0);
+    }
+
+    public boolean checkDelivery() throws KeeperException, InterruptedException {
+        for (Map.Entry<ECSNode, String> entry : paths.entrySet()) {
+            Stat exists = zk.exists(entry.getValue(), false);
+            if (exists != null) {
+                logger.error("Found message undelivered " + entry.getValue() + " on " + entry.getKey());
+                logger.error(new String(zk.getData(entry.getValue(), false, null)));
+                return false;
+            }
+        }
+        return true;
     }
 
     public Map<ECSNode, String> getErrors() {

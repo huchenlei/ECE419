@@ -38,7 +38,7 @@ public class ECS implements IECSClient {
     public static final String ZK_CONN = ZK_HOST + ":" + ZK_PORT;
 
     // ZooKeeper connection timeout in millisecond
-    public static final int ZK_TIMEOUT = 5000;
+    public static final int ZK_TIMEOUT = 2000;
 
     public static final String ZK_SERVER_ROOT = "/kv_servers";
     public static final String ZK_ACTIVE_ROOT = "/active";
@@ -173,11 +173,6 @@ public class ECS implements IECSClient {
             for (ECSDataTransferIssuer transfer : transfers) {
                 logger.info(transfer);
                 ret &= transfer.start(zk);
-
-                if (!ret) {
-                    logger.fatal("Failed to transfer data");
-                    return false;
-                }
             }
         }
 
@@ -284,7 +279,6 @@ public class ECS implements IECSClient {
             }
         }
 
-
         boolean ack;
         try {
             ack = awaitNodes(count, ZK_TIMEOUT);
@@ -361,7 +355,31 @@ public class ECS implements IECSClient {
 
         ECSMulticaster multicaster = new ECSMulticaster(zk, toWait);
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.INIT));
-        toWait.forEach(n -> n.setStatus(ECSNode.ServerStatus.STOP));
+
+        for (ECSNode node : toWait) {
+            node.setStatus(ECSNode.ServerStatus.STOP);
+            Stat exists = zk.exists(ZK_ACTIVE_ROOT + "/" + node.getNodeName(),
+                    new ECSFailureDetector(this, node.getNodeName()));
+            assert exists != null;
+        }
+
+        return ret;
+    }
+
+    public boolean handleNodeShutDown(String name) {
+        boolean ret = true;
+        for (ECSDataTransferIssuer transferIssuer :
+                manager.removeNode(generalNodeTable.get(name))) {
+            try {
+                ret &= transferIssuer.start(zk);
+            } catch (InterruptedException e) {
+                ret = false;
+                e.printStackTrace();
+            }
+        }
+        nodeTable.remove(name);
+        nodePool.add(generalNodeTable.get(name));
+        ret = updateMetadata();
         return ret;
     }
 

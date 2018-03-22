@@ -1,4 +1,5 @@
 package testing;
+
 import app_kvServer.KVServer;
 import client.KVStore;
 import common.KVMessage;
@@ -133,12 +134,11 @@ public class ECSLoadTest extends TestCase {
         for (KVMessage msg : msgs) {
             KVStore client = getRandomClient();
             KVMessage ret = client.put(msg.getKey(), msg.getValue());
-            assertEquals(KVMessage.StatusType.PUT_SUCCESS, ret.getStatus());
+            assertTrue(Arrays.asList(KVMessage.StatusType.PUT_SUCCESS,
+                    KVMessage.StatusType.PUT_UPDATE).contains(ret.getStatus()));
         }
         // Confirm data stored
         testGetData();
-
-        logger.info(new ECSHashRing(ecs.getHashRingJson()));
     }
 
     /**
@@ -186,11 +186,20 @@ public class ECSLoadTest extends TestCase {
         testGetData();
     }
 
+    public void test08KillNodes() throws Exception {
+        Iterator<KVServer> it = serverTable.values().iterator();
+        assertTrue(it.hasNext());
+        KVServer server = it.next();
+        server.kill();
+        // Wait long enough for server to transfer data
+        Thread.sleep(20000);
+        test04PutData();
+    }
 
     /**
      * Shutdown the whole service
      */
-    public void test08Shutdown() throws Exception {
+    public void test09Shutdown() throws Exception {
         boolean ret = ecs.shutdown();
         assertTrue(ret);
     }

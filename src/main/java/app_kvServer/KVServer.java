@@ -18,6 +18,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -640,12 +641,14 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public void run() {
+        List<KVServerConnection> conns = new ArrayList<>();
         running = initializeServer();
         if (serverSocket != null) {
             while (isRunning()) {
                 try {
                     Socket client = serverSocket.accept();
                     KVServerConnection conn = new KVServerConnection(this, client);
+                    conns.add(conn);
                     new Thread(conn).start();
 
                     logger.info(prompt() + "Connected to "
@@ -655,6 +658,9 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     logger.debug(prompt() + "Unable to establish connection with client.\n", e);
                 }
             }
+        }
+        for (KVServerConnection conn : conns) {
+            conn.disconnect();
         }
         logger.info(prompt() + "Server Shutdown");
     }
