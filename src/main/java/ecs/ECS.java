@@ -409,22 +409,21 @@ public class ECS implements IECSClient {
                 }
             }
 
+            for (ECSNode n : toRemove) {
+                n.setStatus(ECSNode.ServerStatus.OFFLINE);
+                nodeTable.remove(n.getNodeName());
+            }
+
+            nodePool.addAll(toRemove);
             ECSMulticaster multicaster = new ECSMulticaster(zk, toRemove);
             ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
         } catch (InterruptedException e) {
             e.printStackTrace();
             ret = false;
         }
-
-        if (ret) {
-            for (ECSNode n : toRemove) {
-                n.setStatus(ECSNode.ServerStatus.OFFLINE);
-                nodeTable.remove(n.getNodeName());
-            }
-            nodePool.addAll(toRemove);
-
+        if (ret)
             ret = updateMetadata();
-        }
+
         return ret;
     }
 

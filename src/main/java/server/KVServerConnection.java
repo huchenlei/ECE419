@@ -2,16 +2,19 @@ package server;
 
 import app_kvServer.IKVServer;
 import app_kvServer.KVServer;
+import common.KVMessage;
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
-import common.KVMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
@@ -132,7 +135,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                 }
                 if (ex != null || value == null) {
                     if (ex != null)
-                        res.setValue(ex.getMessage());
+                        res.setValue(ex.getMessage() + ": " + Arrays.toString(ex.getStackTrace()));
                     else
                         res.setValue("Key(" +
                                 new BigInteger(1, m.getKey().getBytes()).toString(16)

@@ -1,10 +1,16 @@
 package server;
 
-import java.io.*;
-import java.nio.channels.FileChannel;
-
 import ecs.ECSNode;
 import org.apache.log4j.Logger;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BiPredicate;
 
 public class KVIterateStore implements KVPersistentStore {
     private String dir = "./res";
@@ -12,14 +18,37 @@ public class KVIterateStore implements KVPersistentStore {
     private String fileName = "iterateDatabase";
     private File storageFile;
     private String prompt = "KVIterateStore: ";
-    private long startOffset;
-    private long endOffset;
     public static String MOVE_SUFFIX = "_move";
     public static String REMAIN_SUFFIX = "_remain";
 
     private static final String ESCAPER = "-";
     private static final String DELIM = ESCAPER + ",";
     private static final String ESCAPED_ESCAPER = ESCAPER + "d";
+
+    public static class KVEntry {
+        long startOffset;
+        long endOffset;
+        String value = null;
+
+        public KVEntry(long startOffset, long endOffset) {
+            this.startOffset = startOffset;
+            this.endOffset = endOffset;
+        }
+
+        public KVEntry(long startOffset, long endOffset, String value) {
+            this(startOffset, endOffset);
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return "KVEntry{" +
+                    "startOffset=" + startOffset +
+                    ", endOffset=" + endOffset +
+                    ", value='" + value + '\'' +
+                    '}';
+        }
+    }
 
     public KVIterateStore() {
         openFile();
@@ -98,13 +127,19 @@ public class KVIterateStore implements KVPersistentStore {
         }
     }
 
+    private synchronized void appendEntry(RandomAccessFile raf, byte[] stringBytes) throws IOException {
+        raf.seek(raf.length());
+        raf.write(stringBytes);
+    }
+
 
     @Override
     public void put(String key, String value) throws Exception {
         value = encodeValue(value);
         assert (this.storageFile != null);
         // search if key already exist;
-        String getValue = this.get(key);
+        KVEntry entry = this._get(key);
+
         key = encodeValue(key);
         // construct an entry string with fixed length
         byte[] stringBytes = (key + DELIM + value + "\r\n").getBytes("UTF-8");
@@ -113,23 +148,21 @@ public class KVIterateStore implements KVPersistentStore {
         RandomAccessFile raf = new RandomAccessFile(this.storageFile, "rw");
         try {
             if (value.equals("null")) {
-                if (getValue == null) {
+                if (entry == null) {
                     logger.error(prompt + "Try to delete an entry with non-exist key: " + key);
                     throw new IOException("Try to delete an entry with non-exist key: " + key);
                 } else {
                     // delete that entry
-                    this.deleteEntry(raf, this.startOffset, this.endOffset);
-                    logger.info(prompt + "Delete entry (" + key + "=" + getValue + ") successfully");
+                    this.deleteEntry(raf, entry.startOffset, entry.endOffset);
+                    logger.info(prompt + "Delete entry (" + key + "=" + entry.value + ") successfully");
                 }
-            } else if (getValue == null) {
+            } else if (entry == null) {
                 // append the entry to the end
-                long offset = raf.length();
-                raf.seek(offset);
-                raf.write(stringBytes);
+                appendEntry(raf, stringBytes);
                 logger.info(prompt + "Insert new entry: (" + key + "=" + value + ") successfully");
             } else {
-                this.updateEntry(raf, this.startOffset, this.endOffset, stringBytes);
-                logger.info(prompt + "Modify entry with key: " + key + " (" + getValue + "->" + value + ")");
+                this.updateEntry(raf, entry.startOffset, entry.endOffset, stringBytes);
+                logger.info(prompt + "Modify entry with key: " + key + " (" + entry.value + "->" + value + ")");
             }
 
         } finally {
@@ -137,23 +170,57 @@ public class KVIterateStore implements KVPersistentStore {
         }
     }
 
+    private KVEntry _get(String key) throws IOException {
+        List<KVEntry> selected = select((k, v) -> k.equals(key));
+        if (selected.size() > 1) {
+            logger.error("Following duplicated key entry found:");
+            selected.forEach(logger::error);
+
+            boolean areSame = true;
+            for (int i = 0; i < selected.size() - 1; i++) {
+                areSame = selected.get(i).value.equals(selected.get(i + 1).value);
+                if (!areSame) break;
+            }
+
+            if (areSame) {
+                // Remove duplication
+                // Fault tolerance
+                RandomAccessFile raf = new RandomAccessFile(this.storageFile, "rw");
+                for (int i = selected.size() - 1; i > 0; i--) {
+                    KVEntry entry = selected.get(i);
+                    deleteEntry(raf, entry.startOffset, entry.endOffset);
+                    selected.remove(i);
+                }
+                raf.close();
+            }
+        }
+        assert selected.size() <= 1;
+        return selected.size() == 1 ? selected.get(0) : null;
+    }
+
     @Override
-    public String get(String key) throws Exception {
+    public String get(String key) throws IOException {
+        KVEntry entry = _get(key);
+        return entry == null ? null : entry.value;
+    }
+
+    public List<KVEntry> select(BiPredicate<String, String> condition) throws IOException {
         synchronized (this) {
             assert (this.storageFile != null);
-            String value = null;
-            this.startOffset = 0;
-            this.endOffset = 0;
+            List<KVEntry> result = new ArrayList<>();
+
+            long endOffset = 0;
+            long startOffset;
             try {
                 RandomAccessFile raf = new RandomAccessFile(this.storageFile, "r");
                 String line, curKey, curValue;
                 while ((line = raf.readLine()) != null) {
                     // convert line from ISO to UTF-8
                     line = new String(line.getBytes("ISO-8859-1"), "UTF-8");
-                    this.startOffset = this.endOffset;
-                    this.endOffset = raf.getFilePointer();
+                    startOffset = endOffset;
+                    endOffset = raf.getFilePointer();
                     if (line.isEmpty()) {
-                        System.out.println("how could it be");
+                        logger.fatal("how could it be");
                         continue;
                     }
                     String[] strs = line.split(DELIM);
@@ -162,11 +229,9 @@ public class KVIterateStore implements KVPersistentStore {
                         throw new IOException(prompt + "Invalid Entry found when getting data: " + line);
                     }
                     curKey = decodeValue(strs[0]);
-                    curValue = strs[1];
-
-                    if (curKey.equals(key)) {
-                        value = curValue;
-                        break;
+                    curValue = decodeValue(strs[1]);
+                    if (condition.test(curKey, curValue)) {
+                        result.add(new KVEntry(startOffset, endOffset, curValue));
                     }
                 }
                 raf.close();
@@ -176,12 +241,10 @@ public class KVIterateStore implements KVPersistentStore {
                 throw fnf;
             }
 
-            if (value != null) {
-                value = decodeValue(value);
-            }
-            return value;
+            return result;
         }
     }
+
 
     @Override
     public void clearStorage() {
