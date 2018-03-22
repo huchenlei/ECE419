@@ -1,13 +1,14 @@
 package client;
 
+import common.KVMessage;
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
-import common.KVMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
 
 import java.io.IOException;
+import java.util.Collection;
 
 /**
  * Represents a store session(connection) from client to server.
@@ -101,11 +102,19 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
 
     private void dispatchToCorrectServer(KVMessage req) throws IOException {
         if (hashRing == null) return;
-
         String hash = ECSNode.calcHash(req.getKey());
-        ECSNode newServer = hashRing.getNodeByKey(hash);
-        String addr = newServer.getNodeHost();
-        int pt = newServer.getNodePort();
+        ECSNode node = hashRing.getNodeByKey(hash);
+
+        if (req.getStatus().equals(KVMessage.StatusType.GET)) {
+            // Can happen to replica server
+            Collection<ECSNode> replicas = hashRing.getReplicationNodes(node);
+            if (replicas.contains(new ECSNode("DUMB", this.address, this.port))) {
+                return;
+            }
+        }
+
+        String addr = node.getNodeHost();
+        int pt = node.getNodePort();
         if (addr.equals(this.address) && pt == this.port) {
             return;
         }
