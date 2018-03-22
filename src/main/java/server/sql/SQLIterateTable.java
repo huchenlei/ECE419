@@ -1,5 +1,6 @@
 package server.sql;
 
+import app_kvServer.KVServer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -19,10 +20,10 @@ public class SQLIterateTable implements SQLTable {
     private static long pkCount = 0;
     private static final String TABLE_COL_ID = "_table";
     private static final String PRIMARY_KEY = "_pk";
-    private Gson gson;
+    private static Gson gson = new GsonBuilder().create();
     private String name;
     private KVIterateStore store;
-    private Type type = new TypeToken<Map<String, Object>>() {
+    private static Type type = new TypeToken<Map<String, Object>>() {
     }.getType();
     private Map<String, Class> typeMap;
 
@@ -33,15 +34,14 @@ public class SQLIterateTable implements SQLTable {
         this.name = name;
         this.store = store;
         this.typeMap = typeMap;
-        this.gson = new GsonBuilder().create();
         this.typeMap.put(TABLE_COL_ID, String.class);
-        this.typeMap.put(PRIMARY_KEY, Long.class);
+        this.typeMap.put(PRIMARY_KEY, Double.class);
     }
 
     private BiPredicate<String, String> tableSelectWrapper(Predicate<Map<String, Object>> condition) {
         return (key, val) -> {
             // Distinguish with kv store rows
-            if (!key.startsWith("sql")) return false;
+            if (key.length() <= KVServer.MAX_KEY) return false;
             // Convert value string to Json
             Map<String, Object> row = jsonToMap(val);
             String tableName = (String) row.get(TABLE_COL_ID);
@@ -67,11 +67,11 @@ public class SQLIterateTable implements SQLTable {
         }
     }
 
-    private Map<String, Object> jsonToMap(String json) {
+    public static synchronized Map<String, Object> jsonToMap(String json) {
         return gson.fromJson(json, type);
     }
 
-    private String mapToJson(Map<String, Object> map) {
+    public static synchronized String mapToJson(Map<String, Object> map) {
         return gson.toJson(map);
     }
 
