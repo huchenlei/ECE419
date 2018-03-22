@@ -67,6 +67,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
             logger.error("Connection could not be established!", e);
         } finally {
             disconnect();
+            kvServer.conns.remove(this);
         }
     }
 

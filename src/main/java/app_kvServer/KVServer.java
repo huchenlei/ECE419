@@ -18,8 +18,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
 
@@ -292,7 +293,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     break;
                 case SHUT_DOWN:
                     zk.delete(path, zk.exists(path, false).getVersion());
-                    kill();
+                    close();
                     logger.info(prompt() + "Server shutdown");
                     break;
                 case LOCK_WRITE:
@@ -526,6 +527,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     public void close() {
         kill();
         clearCache();
+        clearStorage(); // TODO remove later
     }
 
     @Override
@@ -553,7 +555,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     }
 
     @Override
-    public boolean moveData(String[] hashRange, String targetName) throws Exception {
+    public boolean moveData(String[] hashRange, String targetName) {
         // Don't want to get ip and port from target name
         return false;
     }
@@ -639,9 +641,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     }
 
+    public Set<KVServerConnection> conns;
     @Override
     public void run() {
-        List<KVServerConnection> conns = new ArrayList<>();
+        conns = new HashSet<>();
         running = initializeServer();
         if (serverSocket != null) {
             while (isRunning()) {
