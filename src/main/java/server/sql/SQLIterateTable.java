@@ -9,6 +9,7 @@ import server.KVIterateStore;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +104,7 @@ public class SQLIterateTable implements SQLTable {
             throw new SQLException("Cannot update reserved columns");
         }
         List<KVIterateStore.KVEntry> selected = store.select(tableSelectWrapper(condition));
+        Collections.reverse(selected);
         for (KVIterateStore.KVEntry entry : selected) {
             Map<String, Object> row = jsonToMap(entry.getValue());
             for (Map.Entry<String, Object> e : newValue.entrySet()) {
@@ -127,9 +129,15 @@ public class SQLIterateTable implements SQLTable {
     @Override
     public Integer delete(Predicate<Map<String, Object>> condition) throws SQLException, IOException {
         List<KVIterateStore.KVEntry> selected = store.select(tableSelectWrapper(condition));
+        Collections.reverse(selected);
         for (KVIterateStore.KVEntry kvEntry : selected) {
             store.deleteEntry(kvEntry);
         }
         return selected.size();
+    }
+
+    @Override
+    public void drop() throws IOException {
+        this.delete(m -> true);
     }
 }

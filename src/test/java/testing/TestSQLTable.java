@@ -8,10 +8,7 @@ import server.sql.SQLIterateTable;
 import server.sql.SQLTable;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class TestSQLTable extends TestCase {
@@ -22,9 +19,9 @@ public class TestSQLTable extends TestCase {
         meta.put("age", Double.class);
         meta.put("name", String.class);
         meta.put("weight", Double.class);
-
-        st = new SQLIterateTable("student",
-                new KVIterateStore("student_table"), meta);
+        KVIterateStore student_table = new KVIterateStore("student_table");
+        student_table.clearStorage();
+        st = new SQLIterateTable("student", student_table, meta);
     }
 
     public void test02Insert() throws IOException {
@@ -51,5 +48,34 @@ public class TestSQLTable extends TestCase {
         assertEquals(1, result.size());
         assertEquals(1d, result.get(0).get("weight"));
         assertEquals(1d, result.get(0).get("age"));
+    }
+
+    public void test04Update() throws IOException {
+        Map<String, Object> newVal = new HashMap<>();
+        newVal.put("age", 100d);
+
+        Integer ret = st.update(newVal, (row -> (Double) row.get("weight") < 5));
+        assertEquals(new Integer(5), ret);
+
+        List<Map<String, Object>> query =
+                st.query(Arrays.asList("age", "name"), row -> row.get("age").equals(100d));
+        assertEquals(5, query.size());
+    }
+
+
+    public void test05Delete() throws IOException {
+        Integer delete = st.delete(row -> row.get("name").equals("student2"));
+        assertEquals(new Integer(1), delete);
+
+        List<Map<String, Object>> que =
+                st.query(Collections.singletonList("name"), row -> true);
+        assertEquals(9, que.size());
+    }
+
+    public void test06Drop() throws IOException {
+        st.drop();
+        List<Map<String, Object>> que =
+                st.query(Collections.singletonList("name"), row -> true);
+        assertEquals(0, que.size());
     }
 }

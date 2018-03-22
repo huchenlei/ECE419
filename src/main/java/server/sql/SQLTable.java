@@ -47,4 +47,12 @@ public interface SQLTable {
      */
     Integer delete(Predicate<Map<String, Object>> condition) throws SQLException, IOException;
 
+    /**
+     * SQL drop
+     * Drop the whole table
+     *
+     * @throws IOException exception
+     */
+    void drop() throws IOException;
+
 }
