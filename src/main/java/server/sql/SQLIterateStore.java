@@ -1,22 +1,76 @@
 package server.sql;
 
-import java.util.HashMap;
+import com.google.gson.reflect.TypeToken;
+import org.apache.log4j.Logger;
+import org.apache.zookeeper.*;
+import org.apache.zookeeper.data.Stat;
+import server.KVIterateStore;
+
+import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.Map;
 
 public class SQLIterateStore implements SQLPersistentStore {
-    private String dir = "./res/sql";
+    private static Logger logger = Logger.getRootLogger();
+    public static final String ZK_TABLE_PATH = "/tables";
+    private static Type type = new TypeToken<Map<String, SQLTable>>() {
+    }.getType();
 
-    public static final String DEFAULT_FILE_PREFIX = "SQL_store";
     private Map<String, SQLTable> tableMap;
-    private String filePrefix = DEFAULT_FILE_PREFIX;
+    private ZooKeeper zk;
 
-    public SQLIterateStore() {
-        tableMap = new HashMap<>();
+    private String name;
+    private String prompt;
+    private KVIterateStore store;
+
+    public SQLIterateStore(String name, ZooKeeper zk, KVIterateStore store) {
+        this.zk = zk;
+        this.name = name;
+        this.prompt = "(" + name + "_SQL_Store):";
+        this.store = store;
+        updateTablesMetadata();
+        try {
+            zk.exists(ZK_TABLE_PATH, new Watcher() {
+                @Override
+                public void process(WatchedEvent event) {
+                    if (event.getType().equals(Event.EventType.NodeDataChanged)) {
+                        try {
+                            byte[] data = zk.getData(ZK_TABLE_PATH, this, null);
+                            tableMap = jsonToSQLMap(new String(data));
+                            logger.info(prompt + " table map updated");
+                        } catch (KeeperException | InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+        } catch (KeeperException | InterruptedException e) {
+            logger.error("Unable to register watch on table metadata node");
+            logger.error("please check config of zookeeper");
+            e.printStackTrace();
+        }
     }
 
-    public SQLIterateStore(String filePrefix) {
-        this();
-        this.filePrefix = filePrefix;
+    private Map<String, SQLTable> jsonToSQLMap(String json) {
+        return SQLIterateTable.gson.fromJson(json, type);
+    }
+
+    private boolean updateTablesMetadata() {
+        byte[] metadata = SQLIterateTable.gson.toJson(tableMap).getBytes();
+        try {
+            Stat exists = zk.exists(ZK_TABLE_PATH, false);
+            if (exists == null) {
+                zk.create(ZK_TABLE_PATH, metadata,
+                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            } else {
+                zk.setData(ZK_TABLE_PATH, metadata, exists.getVersion());
+            }
+        } catch (InterruptedException | KeeperException e) {
+            logger.error("Unable to update metadata");
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -28,10 +82,21 @@ public class SQLIterateStore implements SQLPersistentStore {
     public void createTable(String name, Map<String, Class> cols) throws SQLException {
         if (tableMap.get(name) != null)
             throw new SQLException("table " + name + " already exists!");
+
+        SQLIterateTable newTable = new SQLIterateTable(name, store, cols);
+        tableMap.put(name, newTable);
+        updateTablesMetadata();
     }
 
     @Override
-    public void dropTable(String name) throws SQLException {
-
+    public void dropTable(String name) throws SQLException, IOException {
+        SQLTable table = tableMap.get(name);
+        if (table == null) {
+            throw new SQLException("table " + name + " does not exist!");
+        }
+        table.drop();
+        tableMap.remove(name);
+        updateTablesMetadata();
     }
 }
+

@@ -1,9 +1,11 @@
 package server.sql;
 
 import app_kvServer.KVServer;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import ecs.ECSNode;
 import server.KVIterateStore;
 
@@ -21,12 +23,21 @@ public class SQLIterateTable implements SQLTable {
     private static long pkCount = 0;
     private static final String TABLE_COL_ID = "_table";
     private static final String PRIMARY_KEY = "_pk";
-    private static Gson gson = new GsonBuilder().create();
-    private String name;
-    private KVIterateStore store;
+    public static Gson gson;
+
+    static {
+        GsonBuilder builder = new GsonBuilder();
+        builder.registerTypeAdapter(Class.class, new ClassAdapter());
+        builder.setExclusionStrategies(new SQLIterateTableStrategy());
+        gson = builder.create();
+    }
+
     private static Type type = new TypeToken<Map<String, Object>>() {
     }.getType();
-    private Map<String, Class> typeMap;
+
+    private String name;
+    private KVIterateStore store;
+    public Map<String, Class> typeMap;
 
     public SQLIterateTable() {
     }
@@ -72,7 +83,7 @@ public class SQLIterateTable implements SQLTable {
         return gson.fromJson(json, type);
     }
 
-    public static synchronized String mapToJson(Map<String, Object> map) {
+    public static synchronized String mapToJson(Object map) {
         return gson.toJson(map);
     }
 
@@ -139,5 +150,43 @@ public class SQLIterateTable implements SQLTable {
     @Override
     public void drop() throws IOException {
         this.delete(m -> true);
+    }
+}
+
+class ClassAdapter extends TypeAdapter<Class> {
+    @Override
+    public void write(JsonWriter out, Class value) throws IOException {
+        if (value == null) {
+            out.nullValue();
+            return;
+        }
+        out.value(value.getName());
+    }
+
+    @Override
+    public Class read(JsonReader in) throws IOException {
+        if (in.peek() == JsonToken.NULL) {
+            in.nextNull();
+            return null;
+        }
+        String className = in.nextString();
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+}
+
+class SQLIterateTableStrategy implements ExclusionStrategy {
+    @Override
+    public boolean shouldSkipField(FieldAttributes f) {
+        return f.getDeclaredClass().equals(KVIterateStore.class);
+    }
+
+    @Override
+    public boolean shouldSkipClass(Class<?> clazz) {
+        return false;
     }
 }

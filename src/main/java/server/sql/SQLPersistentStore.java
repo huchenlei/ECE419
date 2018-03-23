@@ -1,5 +1,6 @@
 package server.sql;
 
+import java.io.IOException;
 import java.util.Map;
 
 public interface SQLPersistentStore {
@@ -27,5 +28,5 @@ public interface SQLPersistentStore {
      * @param name name of the table
      * @throws SQLException exception
      */
-    void dropTable(String name) throws SQLException;
+    void dropTable(String name) throws SQLException, IOException;
 }
