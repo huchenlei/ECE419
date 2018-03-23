@@ -25,6 +25,10 @@ public class ECSNode extends RawECSNode implements IECSNode {
 
     private ECSNode prev;
 
+    public String cacheStrategy;
+    public Integer cacheSize;
+
+
     public enum ServerStatus {
         OFFLINE,
         INACTIVE, // ssh launched but not yet communicate with ECS yet

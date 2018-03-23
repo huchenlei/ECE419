@@ -16,6 +16,7 @@ public class KVAdminMessage implements Encodable, Decodable {
         RECEIVE, // Open a socket for transferring data
         SEND, // Send data to target host and port in certain hash range
         DELETE, // Delete data of given hash range
+        CLEAR, // Clear the storage
     }
 
     private OperationType operationType;

@@ -52,10 +52,12 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     assert req != null;
                     req.decode(receiveMessage().getMsg());
                     if (!kvServer.isRunning()) {
+                        logger.info(kvServer.prompt() + "Server not running");
                         disconnect();
                         return;
                     }
                     KVMessage res = handleMsg(req);
+                    logger.info(kvServer.prompt() + "Send back response" + res);
                     sendMessage(new TextMessage(res.encode()));
                 } catch (IOException ioe) {
                     logger.warn("Connection lost (" + this.clientSocket.getInetAddress().getHostName()

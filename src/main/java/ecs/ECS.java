@@ -1,6 +1,7 @@
 package ecs;
 
 import app_kvECS.IECSClient;
+import app_kvServer.KVServer;
 import com.google.gson.Gson;
 import common.NetworkUtils;
 import common.messages.KVAdminMessage;
@@ -12,10 +13,7 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 import server.ServerMetaData;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
@@ -44,7 +42,12 @@ public class ECS implements IECSClient {
     public static final String ZK_ACTIVE_ROOT = "/active";
     public static final String ZK_METADATA_ROOT = "/metadata";
 
+    public boolean locally = false;
     private static Logger logger = Logger.getRootLogger();
+
+    private String restoreFileName = "ecs_restore_list";
+    private File restoreFile = new File(this.restoreFileName);
+    private Map<String, IECSNode> restoreList = new HashMap<>();
 
     /**
      * Roster of all <b>idle<b/> storage service nodes
@@ -160,23 +163,47 @@ public class ECS implements IECSClient {
 
     @Override
     public boolean start() throws Exception {
+        // restore servers shut down last time
+        this.restoreServer();
+
         List<ECSNode> toStart = new ArrayList<>();
+        List<ECSNode> toRestore = new ArrayList<>();
+        List<ECSNode> toClear = new ArrayList<>();
+
         for (Map.Entry<String, IECSNode> entry : nodeTable.entrySet()) {
             ECSNode n = (ECSNode) entry.getValue();
             if (n.getStatus().equals(ECSNode.ServerStatus.STOP)) {
                 toStart.add(n);
+                // restored server will be handled separately
+                if (this.restoreList.get(n.getNodeName()) == null) {
+                    toClear.add(n);
+                }
+                else {
+                    toRestore.add(n);
+                }
             }
         }
+
         boolean ret = true;
-        for (ECSNode n : toStart) {
+
+        // restore server first
+        for (ECSNode n : toRestore) {
+            // add the nodes without transferring data
+            logger.info("Add ndoe to hashring " + n.getNodeName());
+            manager.addNode(n);
+        }
+
+        // clear storage for non-restored server;
+        ECSMulticaster multicaster = new ECSMulticaster(zk, toClear);
+        ret &= multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.CLEAR));
+        for (ECSNode n : toClear) {
             List<ECSDataTransferIssuer> transfers = manager.addNode(n);
             for (ECSDataTransferIssuer transfer : transfers) {
                 logger.info(transfer);
                 ret &= transfer.start(zk);
             }
         }
-
-        ECSMulticaster multicaster = new ECSMulticaster(zk, toStart);
+        multicaster = new ECSMulticaster(zk, toStart);
         ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.START));
 
         for (ECSNode n : toStart) {
@@ -187,8 +214,19 @@ public class ECS implements IECSClient {
             }
         }
 
+        clearRestoreList();
         updateMetadata();
         return ret;
+    }
+
+    public void clearRestoreList() throws IOException{
+        // clear restore list
+        this.restoreList.clear();
+        if (this.restoreFile != null){
+            // clear the file
+            new PrintWriter(this.restoreFile);
+            logger.info("Restore file cleared");
+        }
     }
 
     @Override
@@ -209,6 +247,10 @@ public class ECS implements IECSClient {
                 hashRing.removeNode(n);
             }
         }
+
+        // save the restore list
+        this.saveStoreList(toStop);
+
         toStop.forEach(n -> n.setStatus(ECSNode.ServerStatus.STOP));
 
         updateMetadata();
@@ -221,6 +263,16 @@ public class ECS implements IECSClient {
                 .stream().map((n) -> (ECSNode) n).collect(Collectors.toList()));
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
         if (ret) {
+            // get the restore list
+            List<ECSNode> toRestore = new ArrayList<>();
+            for (IECSNode n: this.nodeTable.values()){
+                ECSNode node = (ECSNode)n;
+                if (node.status.equals(ECSNode.ServerStatus.ACTIVE)){
+                    toRestore.add(node);
+                }
+            }
+            this.saveStoreList(toRestore);
+
             hashRing.removeAll();
             nodeTable.values()
                     .forEach(n -> ((ECSNode) n).setStatus(ECSNode.ServerStatus.OFFLINE));
@@ -229,6 +281,33 @@ public class ECS implements IECSClient {
             ret = updateMetadata();
         }
         return ret;
+    }
+
+    public void saveStoreList(Collection<ECSNode> nodeList) {
+        try {
+            if (this.restoreFile == null) {
+                this.restoreFile = new File(this.restoreFileName);
+            }
+            if (!this.restoreFile.exists()) {
+                logger.info("New restore file created");
+                this.restoreFile.createNewFile();
+            }
+            BufferedWriter output = new BufferedWriter(new FileWriter(restoreFile, true));
+
+            for (ECSNode n: nodeList) {
+                String line = String.join(" ", n.getNodeName(), n.cacheStrategy,
+                        n.cacheSize.toString());
+                output.append(line + "\r\n");
+
+            }
+            output.close();
+
+            logger.info("restore file updated");
+        } catch (IOException e){
+            logger.error("Unable to save the restore List" + e.getMessage());
+        }
+
+
     }
 
     static String getNodePath(IECSNode node) {
@@ -243,11 +322,26 @@ public class ECS implements IECSClient {
         return nodes.size() == 1 ? (IECSNode) nodes.toArray()[0] : null;
     }
 
-    @Override
-    public Collection<IECSNode> addNodes(int count, String cacheStrategy, int cacheSize) {
-        Collection<IECSNode> nodes = setupNodes(count, cacheStrategy, cacheSize);
-        if (nodes == null) return null;
+    public void addNodes(Collection<IECSNode> nodes, String cacheStrategy, int cacheSize) {
+        setupNodes(nodes, cacheStrategy, cacheSize);
+        invokeNodes(nodes);
+    }
 
+    public void addNodesLocally(Collection<IECSNode> nodes, String cacheStrategy, int cacheSize) {
+        setupNodes(nodes, cacheStrategy, cacheSize);
+        for (IECSNode node : nodes) {
+            KVServer server = new KVServer(node.getNodePort(), node.getNodeName(),
+                    ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT));
+            new Thread(server).start();
+        }
+        try {
+            awaitNodes(nodes.size(), ZK_TIMEOUT);
+        } catch (Exception e) {
+            logger.error(e);
+        }
+    }
+
+    public Collection<IECSNode> invokeNodes(Collection<IECSNode> nodes) {
         for (IECSNode n : nodes) {
             assert n != null;
             // Issue the ssh call to start the process remotely
@@ -281,7 +375,7 @@ public class ECS implements IECSClient {
 
         boolean ack;
         try {
-            ack = awaitNodes(count, ZK_TIMEOUT);
+            ack = awaitNodes(nodes.size(), ZK_TIMEOUT);
         } catch (Exception e) {
             logger.error(e);
             return null;
@@ -290,6 +384,14 @@ public class ECS implements IECSClient {
             return nodes;
         else
             return null;
+    }
+
+    @Override
+    public Collection<IECSNode> addNodes(int count, String cacheStrategy, int cacheSize) {
+        Collection<IECSNode> nodes = setupNodes(count, cacheStrategy, cacheSize);
+        if (nodes == null) return null;
+
+        return invokeNodes(nodes);
     }
 
     @Override
@@ -302,8 +404,13 @@ public class ECS implements IECSClient {
             nodeList.add(n);
         }
 
-        byte[] metadata = new Gson().toJson(new ServerMetaData(cacheStrategy, cacheSize)).getBytes();
+        return setupNodes(nodeList, cacheStrategy, cacheSize);
 
+    }
+
+    public Collection<IECSNode> setupNodes(Collection<IECSNode> nodeList, String cacheStrategy, int cacheSize) {
+
+        byte[] metadata = new Gson().toJson(new ServerMetaData(cacheStrategy, cacheSize)).getBytes();
         // create corresponding Z-nodes on zookeeper server
         try {
             if (zk.exists(ZK_SERVER_ROOT, false) == null) {
@@ -316,6 +423,9 @@ public class ECS implements IECSClient {
             }
 
             for (IECSNode n : nodeList) {
+                ((ECSNode)n).cacheStrategy = cacheStrategy;
+                ((ECSNode)n).cacheSize = cacheSize;
+
                 Stat exists = zk.exists(getNodePath(n), false);
                 if (exists == null) {
                     zk.create(getNodePath(n), metadata,
@@ -342,7 +452,6 @@ public class ECS implements IECSClient {
             nodeTable.put(n.getNodeName(), n);
         }
 
-        assert nodeList.size() == count;
         return nodeList;
     }
 
@@ -450,6 +559,72 @@ public class ECS implements IECSClient {
                 .collect(Collectors.toList());
 
         return new Gson().toJson(activeNodes);
+    }
+
+    /**
+     * Restore last time shutdowned server.
+     */
+    public void restoreServer() {
+        if (this.restoreFile == null) {
+            this.restoreFile = new File(this.restoreFileName);
+        }
+        try {
+            // create one if file does not exist
+            if (!this.restoreFile.exists()) {
+                this.restoreFile.createNewFile();
+                logger.info("New restore file created, no shut downed server last time.");
+                return;
+
+            } else {
+                logger.debug("Restore list found.");
+
+                // parsing the restore file
+                BufferedReader restoreReader = new BufferedReader(new FileReader(this.restoreFile));
+                String currentLine;
+                List<String> restoreLineList = new ArrayList<String>();
+                while ((currentLine = restoreReader.readLine()) != null) {
+                    restoreLineList.add(currentLine);
+                }
+                if (restoreLineList.isEmpty()) {
+                    logger.info("restore list is empty, no server to restore");
+                }
+                else {
+                    for (String restoreLine: restoreLineList) {
+                        String[] tokens = restoreLine.split(" ");
+                        if (tokens.length != 3){
+                            logger.error("Invalid restore line token format");
+                            throw new IOException();
+                        }
+                        // get restored info
+                        String restoreName = tokens[0];
+                        String cacheStrategy = tokens[1];
+                        Integer cacheSize = Integer.parseInt(tokens[2]);
+
+                        ECSNode restoreNode = generalNodeTable.get(restoreName);
+                        // should not be null
+                        assert restoreNode != null;
+                        this.restoreList.put(restoreNode.getNodeName(), restoreNode);
+
+                        // if node is offline
+                        // restore cacheStrategy and cache size separately
+                        if (restoreNode.getStatus().equals(ECSNode.ServerStatus.OFFLINE)){
+                            // create a single element list
+                            logger.info("Restoring: " + restoreNode.getNodeName());
+                            List<IECSNode> singleList = new ArrayList<>(Arrays.asList(restoreNode));
+                            if (this.locally) {
+                                this.addNodesLocally(singleList, cacheStrategy, cacheSize);
+                            }else {
+                                this.addNodes(singleList, cacheStrategy, cacheSize);
+                            }
+                        }
+                    }
+
+                }
+
+            }
+        } catch (IOException e) {
+            logger.error("Error occurred when restore servers " + e.getMessage());
+        }
     }
 
     /**
