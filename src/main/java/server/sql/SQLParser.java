@@ -141,13 +141,16 @@ public class SQLParser {
         switch (tokens.get(2).getType()) {
             case GT:
                 result.conditionFunc = result::gt;
+                result.conditionComparator = Double.parseDouble(tokens.get(3).value);
                 break;
             case LT:
                 result.conditionFunc = result::lt;
+                result.conditionComparator = Double.parseDouble(tokens.get(3).value);
             case EQ:
                 result.conditionFunc = result::eq;
+                result.conditionVal = tokens.get(3).value;
         }
-        result.conditionVal = tokens.get(3).value;
+
     }
 
     private static Map<String, Class> parseSchema(String schema) {

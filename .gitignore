@@ -30,3 +30,6 @@ dist/
 
 # build dir
 build/
+
+# ecs session file
+ecs_restore_list

@@ -7,11 +7,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-public class SQLExecuter {
+public class SQLExecutor {
     private static Logger logger = Logger.getRootLogger();
     private SQLPersistentStore store;
 
-    public SQLExecuter(SQLPersistentStore store) {
+    public SQLExecutor(SQLPersistentStore store) {
         this.store = store;
     }
 
