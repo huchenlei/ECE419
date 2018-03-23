@@ -4,7 +4,7 @@ import common.messages.Decodable;
 import common.messages.Encodable;
 
 public interface KVMessage extends Encodable, Decodable {
-    public enum StatusType {
+    enum StatusType {
         GET,            /* Get - request */
         GET_ERROR,        /* requested tuple (i.e. value) not found */
         GET_SUCCESS,    /* requested tuple (i.e. value) found */
@@ -22,40 +22,42 @@ public interface KVMessage extends Encodable, Decodable {
         SERVER_NOT_RESPONSIBLE,  /* Request not successful, server not responsible for key */
 
         PUT_REPLICATE, // Replication put launched from other server
+
+        SQL, // SQL request
     }
 
     /**
      * @return the key that is associated with this message,
      * null if not key is associated.
      */
-    public String getKey();
+    String getKey();
 
     /**
      * @return the value that is associated with this message,
      * null if not value is associated.
      */
-    public String getValue();
+    String getValue();
 
     /**
      * @return a status string that is used to identify request types,
      * response types and error types associated to the message.
      */
-    public StatusType getStatus();
+    StatusType getStatus();
 
     /**
      * Setter of key
      */
-    public void setKey(String key);
+    void setKey(String key);
 
     /**
      * Setter of value
      */
-    public void setValue(String value);
+    void setValue(String value);
 
     /**
      * Setter of status
      */
-    public void setStatus(StatusType status);
+    void setStatus(StatusType status);
 
 }
 

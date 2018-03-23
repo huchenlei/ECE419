@@ -45,61 +45,80 @@ public class KVClient implements IKVClient, Runnable {
         String[] tokens = cmdLine.split("\\s+");
         String cmd = tokens[0];
         try {
-            if (cmd.equals("quit") || cmd.equals("q")) {
-                checkArgumentNum(tokens, 1);
-                running = false;
-                disconnect();
-                System.out.println(PROMPT + "Application Exit!");
-            } else if (cmd.equals("connect") || cmd.equals("c")) {
-                try {
-                    checkArgumentNum(tokens, 3);
-                    newConnection(
-                            tokens[1],
-                            Integer.parseInt(tokens[2])
-                    );
-                    System.out.println(PROMPT + "Connected to server " + tokens[1] + ":" + tokens[2]);
-                } catch (NumberFormatException nfe) {
-                    printError("No valid address. Port must be a number!");
-                    logger.info("Unable to parse argument <port>", nfe);
-                } catch (UnknownHostException e) {
-                    printError("Unknown Host!");
-                    logger.info("Unknown Host!", e);
-                } catch (IOException e) {
-                    printError("Could not establish connection!");
-                    logger.warn("Could not establish connection!", e);
-                }
-            } else if (cmd.equals("disconnect") || cmd.equals("d")) {
-                checkArgumentNum(tokens, 1);
-                disconnect();
-                System.out.println(PROMPT + "Connection terminated.");
+            switch (cmd) {
+                case "quit":
+                case "q":
+                    checkArgumentNum(tokens, 1);
+                    running = false;
+                    disconnect();
+                    System.out.println(PROMPT + "Application Exit!");
+                    break;
+                case "connect":
+                case "c":
+                    try {
+                        checkArgumentNum(tokens, 3);
+                        newConnection(
+                                tokens[1],
+                                Integer.parseInt(tokens[2])
+                        );
+                        System.out.println(PROMPT + "Connected to server " + tokens[1] + ":" + tokens[2]);
+                    } catch (NumberFormatException nfe) {
+                        printError("No valid address. Port must be a number!");
+                        logger.info("Unable to parse argument <port>", nfe);
+                    } catch (UnknownHostException e) {
+                        printError("Unknown Host!");
+                        logger.info("Unknown Host!", e);
+                    } catch (IOException e) {
+                        printError("Could not establish connection!");
+                        logger.warn("Could not establish connection!", e);
+                    }
+                    break;
+                case "disconnect":
+                case "d":
+                    checkArgumentNum(tokens, 1);
+                    disconnect();
+                    System.out.println(PROMPT + "Connection terminated.");
 
-            } else if (cmd.equals("get")) {
-                checkArgumentNum(tokens, 2);
-                KVMessage res = client.get(tokens[1]);
-                if (res != null) {
-                		printMessage(res);
+                    break;
+                case "get": {
+                    checkArgumentNum(tokens, 2);
+                    KVMessage res = client.get(tokens[1]);
+                    if (res != null) {
+                        printMessage(res);
+                    }
+                    break;
                 }
-            } else if (cmd.equals("put")) {
-                checkArgumentNum(tokens, 3);
-                KVMessage res = client.put(tokens[1], tokens[2]);
-                if (res != null) {
-            			printMessage(res);
+                case "put": {
+                    checkArgumentNum(tokens, 3);
+                    KVMessage res = client.put(tokens[1], tokens[2]);
+                    if (res != null) {
+                        printMessage(res);
+                    }
+                    break;
                 }
-            } else if (cmd.equals("logLevel")) {
-                checkArgumentNum(tokens, 2);
-                String level = setLevel(tokens[1]);
-                if (level.equals(LogSetup.UNKNOWN_LEVEL)) {
-                    printError("No valid log level!");
-                    printPossibleLogLevels();
-                } else {
-                    System.out.println(PROMPT +
-                            "Log level changed to level " + level);
-                }
-            } else if (cmd.equals("help")) {
-                printHelp();
-            } else {
-                printError("Unknown command!");
-                printHelp();
+                case "sql":
+                    // Send SQL request
+                    String sql = cmdLine.substring(4);
+                    // TODO
+                    break;
+                case "logLevel":
+                    checkArgumentNum(tokens, 2);
+                    String level = setLevel(tokens[1]);
+                    if (level.equals(LogSetup.UNKNOWN_LEVEL)) {
+                        printError("No valid log level!");
+                        printPossibleLogLevels();
+                    } else {
+                        System.out.println(PROMPT +
+                                "Log level changed to level " + level);
+                    }
+                    break;
+                case "help":
+                    printHelp();
+                    break;
+                default:
+                    printError("Unknown command!");
+                    printHelp();
+                    break;
             }
 
         } catch (ArgumentNumberException e) {

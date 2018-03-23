@@ -8,6 +8,7 @@ import common.messages.AbstractKVMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
+import server.sql.SQLExecutor;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 public class KVServerConnection extends AbstractKVConnection implements Runnable {
     private KVServer kvServer;
     private KVServerForwarderManager forwarderManager;
+    private SQLExecutor executor;
 
     public KVServerConnection(KVServer kvServer, Socket clientSocket) {
         this.kvServer = kvServer;
@@ -38,6 +40,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         this.open = true;
         this.setPrompt(kvServer.getServerName());
         this.forwarderManager = kvServer.getForwarderManager();
+        this.executor = new SQLExecutor(kvServer.getSqlStore());
     }
 
     @Override
@@ -56,7 +59,12 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                         disconnect();
                         return;
                     }
-                    KVMessage res = handleMsg(req);
+                    KVMessage res;
+                    if (req.getStatus() == KVMessage.StatusType.SQL)
+                        res = handleSQL(req);
+                    else
+                        res = handleMsg(req);
+
                     logger.info(kvServer.prompt() + "Send back response" + res);
                     sendMessage(new TextMessage(res.encode()));
                 } catch (IOException ioe) {
@@ -73,10 +81,18 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         }
     }
 
+    private KVMessage handleSQL(KVMessage msg) {
+        String ret = executor.executeSQL(msg.getValue());
+        KVMessage res = AbstractKVMessage.createMessage();
+        assert res != null;
+        res.setKey(msg.getKey());
+        res.setStatus(KVMessage.StatusType.SQL);
+        res.setValue(ret);
+        return res;
+    }
 
     private boolean isResponsible(KVMessage m) {
         ECSHashRing hashRing = kvServer.getHashRing();
-
 
         ECSNode node = hashRing.getNodeByKey(ECSNode.calcHash(m.getKey()));
         if (node == null) {

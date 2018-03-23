@@ -73,6 +73,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
      */
     private SQLPersistentStore sqlStore;
 
+    public SQLPersistentStore getSqlStore() {
+        return sqlStore;
+    }
+
     public String getHashRingString() {
         return hashRingString;
     }
