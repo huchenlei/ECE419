@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.*;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class TestSQLTable extends TestCase {
+public class SQLTableTest extends TestCase {
     public static SQLTable st;
 
     public void test01Create() {

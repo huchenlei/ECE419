@@ -1,16 +1,15 @@
 package testing;
 
+import app_kvServer.KVServer;
+import junit.framework.Test;
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
+import logger.LogSetup;
+import org.apache.log4j.Level;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
-import junit.framework.TestCase;
-import org.apache.log4j.Level;
-
-import app_kvServer.KVServer;
-import junit.framework.Test;
-import junit.framework.TestSuite;
-import logger.LogSetup;
 
 
 public class AllTests {
@@ -40,7 +39,8 @@ public class AllTests {
                 ECSBasicTest.class,
                 ECSLoadTest.class,
                 ServerTest.class,
-                DataDistributionManagerTest.class
+                DataDistributionManagerTest.class,
+                SQLTableTest.class
         );
         for (Class<? extends TestCase> test :
                 tests) {
