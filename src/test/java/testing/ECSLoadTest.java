@@ -4,7 +4,6 @@ import app_kvServer.KVServer;
 import client.KVStore;
 import common.KVMessage;
 import ecs.ECS;
-import ecs.ECSHashRing;
 import ecs.ECSNode;
 import ecs.IECSNode;
 import junit.framework.TestCase;
@@ -17,13 +16,10 @@ import org.junit.runners.MethodSorters;
 import performance.DataParser;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static testing.ECSLoadTest.TestHelper.addNodes;
-import static testing.ECSLoadTest.TestHelper.getRandomClient;
-import static testing.ECSLoadTest.TestHelper.testGetData;
+import static testing.ECSLoadTest.TestHelper.*;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ECSLoadTest extends TestCase {
@@ -212,5 +208,8 @@ public class ECSLoadTest extends TestCase {
         ecs.start();
         Thread.sleep(200);
         testGetData();
+
+        ecs.shutdown();
+        ecs.clearRestoreList();
     }
 }

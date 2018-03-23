@@ -545,7 +545,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     public void close() {
         kill();
         clearCache();
-//        clearStorage(); // TODO remove later
     }
 
     @Override

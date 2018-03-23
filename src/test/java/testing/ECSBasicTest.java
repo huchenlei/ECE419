@@ -1,4 +1,5 @@
 package testing;
+
 import app_kvServer.KVServer;
 import ecs.ECS;
 import ecs.ECSNode;
@@ -11,9 +12,6 @@ import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -125,6 +123,9 @@ public class ECSBasicTest extends TestCase {
     public void test06Shutdown() throws Exception {
         boolean ret = ecs.shutdown();
         assertTrue(ret);
+        ecs.clearRestoreList();
+
+        Thread.sleep(1000);
     }
 
 }

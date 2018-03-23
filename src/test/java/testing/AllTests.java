@@ -40,7 +40,9 @@ public class AllTests {
                 ECSLoadTest.class,
                 ServerTest.class,
                 DataDistributionManagerTest.class,
-                SQLTableTest.class
+                SQLTableTest.class,
+                SQLExecutorTest.class,
+                SQLStoreTest.class
         );
         for (Class<? extends TestCase> test :
                 tests) {
