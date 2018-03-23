@@ -20,7 +20,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class SQLIterateTable implements SQLTable {
-    private static long pkCount = 0;
     private static final String TABLE_COL_ID = "_table";
     private static final String PRIMARY_KEY = "_pk";
     public static Gson gson;
@@ -55,7 +54,9 @@ public class SQLIterateTable implements SQLTable {
         this.store = store;
         this.typeMap = typeMap;
         this.typeMap.put(TABLE_COL_ID, String.class);
-        this.typeMap.put(PRIMARY_KEY, Double.class);
+        // No longer use primary key system to identify different object
+        // with same values
+//        this.typeMap.put(PRIMARY_KEY, Double.class);
     }
 
     private BiPredicate<String, String> tableSelectWrapper(Predicate<Map<String, Object>> condition) {
@@ -140,7 +141,6 @@ public class SQLIterateTable implements SQLTable {
         sanityCheck(value);
         String key = ECSNode.calcHash(mapToJson(value));
         value.put(TABLE_COL_ID, name);
-        value.put(PRIMARY_KEY, pkCount++);
         String val = mapToJson(value);
         store.appendEntry(new KVIterateStore.KVEntry(key, val));
     }

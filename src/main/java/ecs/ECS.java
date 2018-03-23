@@ -177,8 +177,7 @@ public class ECS implements IECSClient {
                 // restored server will be handled separately
                 if (this.restoreList.get(n.getNodeName()) == null) {
                     toClear.add(n);
-                }
-                else {
+                } else {
                     toRestore.add(n);
                 }
             }
@@ -219,10 +218,10 @@ public class ECS implements IECSClient {
         return ret;
     }
 
-    public void clearRestoreList() throws IOException{
+    public void clearRestoreList() throws IOException {
         // clear restore list
         this.restoreList.clear();
-        if (this.restoreFile != null){
+        if (this.restoreFile != null) {
             // clear the file
             new PrintWriter(this.restoreFile);
             logger.info("Restore file cleared");
@@ -259,27 +258,29 @@ public class ECS implements IECSClient {
 
     @Override
     public boolean shutdown() throws Exception {
+
+        boolean ret = true;
+        // get the restore list
+        List<ECSNode> toRestore = new ArrayList<>();
+        for (IECSNode n : this.nodeTable.values()) {
+            ECSNode node = (ECSNode) n;
+            if (node.status.equals(ECSNode.ServerStatus.ACTIVE)) {
+                toRestore.add(node);
+            }
+        }
+
+        this.saveStoreList(toRestore);
+        hashRing.removeAll();
+        nodeTable.values()
+                .forEach(n -> ((ECSNode) n).setStatus(ECSNode.ServerStatus.OFFLINE));
+        nodePool.addAll(nodeTable.values());
+        nodeTable.clear();
+        ret = updateMetadata();
+
         ECSMulticaster multicaster = new ECSMulticaster(zk, nodeTable.values()
                 .stream().map((n) -> (ECSNode) n).collect(Collectors.toList()));
-        boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
-        if (ret) {
-            // get the restore list
-            List<ECSNode> toRestore = new ArrayList<>();
-            for (IECSNode n: this.nodeTable.values()){
-                ECSNode node = (ECSNode)n;
-                if (node.status.equals(ECSNode.ServerStatus.ACTIVE)){
-                    toRestore.add(node);
-                }
-            }
-            this.saveStoreList(toRestore);
+        ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
 
-            hashRing.removeAll();
-            nodeTable.values()
-                    .forEach(n -> ((ECSNode) n).setStatus(ECSNode.ServerStatus.OFFLINE));
-            nodePool.addAll(nodeTable.values());
-            nodeTable.clear();
-            ret = updateMetadata();
-        }
         return ret;
     }
 
@@ -294,7 +295,7 @@ public class ECS implements IECSClient {
             }
             BufferedWriter output = new BufferedWriter(new FileWriter(restoreFile, true));
 
-            for (ECSNode n: nodeList) {
+            for (ECSNode n : nodeList) {
                 String line = String.join(" ", n.getNodeName(), n.cacheStrategy,
                         n.cacheSize.toString());
                 output.append(line + "\r\n");
@@ -303,7 +304,7 @@ public class ECS implements IECSClient {
             output.close();
 
             logger.info("restore file updated");
-        } catch (IOException e){
+        } catch (IOException e) {
             logger.error("Unable to save the restore List" + e.getMessage());
         }
 
@@ -423,8 +424,8 @@ public class ECS implements IECSClient {
             }
 
             for (IECSNode n : nodeList) {
-                ((ECSNode)n).cacheStrategy = cacheStrategy;
-                ((ECSNode)n).cacheSize = cacheSize;
+                ((ECSNode) n).cacheStrategy = cacheStrategy;
+                ((ECSNode) n).cacheSize = cacheSize;
 
                 Stat exists = zk.exists(getNodePath(n), false);
                 if (exists == null) {
@@ -587,11 +588,10 @@ public class ECS implements IECSClient {
                 }
                 if (restoreLineList.isEmpty()) {
                     logger.info("restore list is empty, no server to restore");
-                }
-                else {
-                    for (String restoreLine: restoreLineList) {
+                } else {
+                    for (String restoreLine : restoreLineList) {
                         String[] tokens = restoreLine.split(" ");
-                        if (tokens.length != 3){
+                        if (tokens.length != 3) {
                             logger.error("Invalid restore line token format");
                             throw new IOException();
                         }
@@ -607,13 +607,13 @@ public class ECS implements IECSClient {
 
                         // if node is offline
                         // restore cacheStrategy and cache size separately
-                        if (restoreNode.getStatus().equals(ECSNode.ServerStatus.OFFLINE)){
+                        if (restoreNode.getStatus().equals(ECSNode.ServerStatus.OFFLINE)) {
                             // create a single element list
                             logger.info("Restoring: " + restoreNode.getNodeName());
                             List<IECSNode> singleList = new ArrayList<>(Arrays.asList(restoreNode));
                             if (this.locally) {
                                 this.addNodesLocally(singleList, cacheStrategy, cacheSize);
-                            }else {
+                            } else {
                                 this.addNodes(singleList, cacheStrategy, cacheSize);
                             }
                         }

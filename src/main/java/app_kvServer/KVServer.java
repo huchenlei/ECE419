@@ -305,7 +305,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     break;
                 case SHUT_DOWN:
                     zk.delete(path, zk.exists(path, false).getVersion());
-                    Thread.sleep(100);
                     close();
                     logger.info(prompt() + "Server shutdown");
                     break;
