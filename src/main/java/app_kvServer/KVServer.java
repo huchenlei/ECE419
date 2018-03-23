@@ -11,6 +11,8 @@ import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import server.*;
 import server.cache.KVCache;
+import server.sql.SQLIterateStore;
+import server.sql.SQLPersistentStore;
 
 import java.io.*;
 import java.lang.reflect.Constructor;
@@ -65,6 +67,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
      * Forward put requests to server replicas
      */
     private KVServerForwarderManager forwarderManager;
+
+    /**
+     * SQL storage service
+     */
+    private SQLPersistentStore sqlStore;
 
     public String getHashRingString() {
         return hashRingString;
@@ -255,6 +262,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         }
 
         this.store = new KVIterateStore(name + "_iterateDataBase");
+        this.sqlStore = new SQLIterateStore(serverName, zk, (KVIterateStore) store);
 
         try {
             // set watcher on childrens
@@ -642,6 +650,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     }
 
     public Set<KVServerConnection> conns;
+
     @Override
     public void run() {
         conns = new HashSet<>();

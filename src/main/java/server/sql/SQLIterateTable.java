@@ -39,7 +39,15 @@ public class SQLIterateTable implements SQLTable {
     private KVIterateStore store;
     public Map<String, Class> typeMap;
 
+    public String getName() {
+        return name;
+    }
+
     public SQLIterateTable() {
+    }
+
+    public void setStore(KVIterateStore store) {
+        this.store = store;
     }
 
     public SQLIterateTable(String name, KVIterateStore store, Map<String, Class> typeMap) {

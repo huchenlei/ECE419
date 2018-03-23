@@ -8,22 +8,27 @@ import server.KVIterateStore;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.Map;
 
 public class SQLIterateStore implements SQLPersistentStore {
     private static Logger logger = Logger.getRootLogger();
     public static final String ZK_TABLE_PATH = "/tables";
-    private static Type type = new TypeToken<Map<String, SQLTable>>() {
+    private static Type type = new TypeToken<Map<String, SQLIterateTable>>() {
     }.getType();
 
-    private Map<String, SQLTable> tableMap;
+    private Map<String, SQLIterateTable> tableMap;
     private ZooKeeper zk;
 
     private String name;
     private String prompt;
     private KVIterateStore store;
 
+    public SQLIterateStore() {
+    }
+
     public SQLIterateStore(String name, ZooKeeper zk, KVIterateStore store) {
+        this.tableMap = new HashMap<>();
         this.zk = zk;
         this.name = name;
         this.prompt = "(" + name + "_SQL_Store):";
@@ -37,6 +42,9 @@ public class SQLIterateStore implements SQLPersistentStore {
                         try {
                             byte[] data = zk.getData(ZK_TABLE_PATH, this, null);
                             tableMap = jsonToSQLMap(new String(data));
+                            for (SQLIterateTable table : tableMap.values()) {
+                                table.setStore(store);
+                            }
                             logger.info(prompt + " table map updated");
                         } catch (KeeperException | InterruptedException e) {
                             e.printStackTrace();
@@ -51,7 +59,7 @@ public class SQLIterateStore implements SQLPersistentStore {
         }
     }
 
-    private Map<String, SQLTable> jsonToSQLMap(String json) {
+    private Map<String, SQLIterateTable> jsonToSQLMap(String json) {
         return SQLIterateTable.gson.fromJson(json, type);
     }
 
