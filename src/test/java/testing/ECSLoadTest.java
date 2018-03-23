@@ -42,7 +42,7 @@ public class ECSLoadTest extends TestCase {
     private Exception ex = null;
     private static Map<ECSNode, KVServer> serverTable = new HashMap<>();
     private static List<KVStore> clients = new ArrayList<>();
-    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox");
+    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox").subList(0,10);
 
     static class TestHelper {
         static final Integer ACCESS_NUM = 64;
@@ -98,6 +98,8 @@ public class ECSLoadTest extends TestCase {
      */
     public void test01Creation() throws IOException {
         ecs = new ECS("ecs.config");
+        ecs.clearRestoreList();
+        ecs.locally = true;
         assertNotNull(ecs);
     }
 
@@ -201,6 +203,14 @@ public class ECSLoadTest extends TestCase {
      */
     public void test09Shutdown() throws Exception {
         boolean ret = ecs.shutdown();
+        Thread.sleep(2000);
         assertTrue(ret);
+    }
+
+    public void test10ShutdownRestore() throws Exception {
+        addNodes(1);
+        ecs.start();
+        Thread.sleep(200);
+        testGetData();
     }
 }

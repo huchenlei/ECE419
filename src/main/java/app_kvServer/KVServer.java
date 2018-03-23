@@ -293,6 +293,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     break;
                 case SHUT_DOWN:
                     zk.delete(path, zk.exists(path, false).getVersion());
+                    Thread.sleep(100);
                     close();
                     logger.info(prompt() + "Server shutdown");
                     break;
@@ -371,6 +372,11 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     zk.delete(path, zk.exists(path, false).getVersion());
                     break;
 
+                case CLEAR:
+                    logger.info(prompt() + "Received storage clear message.");
+                    this.clearStorage();
+                    zk.delete(path, zk.exists(path, false).getVersion());
+                    logger.info(prompt() + "Storage cleared.");
             }
 
             // re-register the watch
@@ -527,7 +533,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     public void close() {
         kill();
         clearCache();
-        clearStorage(); // TODO remove later
+//        clearStorage(); // TODO remove later
     }
 
     @Override
@@ -571,10 +577,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             rawSenderMetaData = new Gson().toJson(senderMetaData).getBytes();
             Stat stat = zk.setData(zkPath, rawSenderMetaData,
                     zk.exists(zkPath, false).getVersion());
-            logger.debug(prompt() + "Update TransferProgress: " + transferProgress);
+            logger.info(prompt() + "Update TransferProgress: " + transferProgress);
 
         } catch (InterruptedException | KeeperException e) {
-            logger.debug(prompt() + "Unable to update progress");
+            logger.info(prompt() + "Unable to update progress");
             e.printStackTrace();
         }
 

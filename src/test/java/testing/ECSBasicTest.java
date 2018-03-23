@@ -11,6 +11,9 @@ import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,6 +48,8 @@ public class ECSBasicTest extends TestCase {
      */
     public void test01Creation() throws IOException {
         ecs = new ECS("ecs.config");
+        ecs.clearRestoreList();
+        ecs.locally = true;
         new ECS("./src/test/resources/ecs_dup_name.config");
         try {
             new ECS("./src/test/resources/ecs_bad_format.config");
