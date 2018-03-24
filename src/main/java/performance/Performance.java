@@ -6,9 +6,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
+
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
@@ -16,6 +20,7 @@ import app_kvServer.KVServer;
 import client.KVStore;
 import common.KVMessage;
 import ecs.ECS;
+import ecs.ECSNode;
 import ecs.IECSNode;
 import logger.LogSetup;
 
@@ -24,6 +29,12 @@ public class Performance {
 	private static Logger logger = Logger.getRootLogger();
 	private long totalGetLatency;
 	private long totalPutLatency;
+	private long add1NodesLatency;
+	private long add5NodesLatency;
+	private long add10NodesLatency;
+	private long remove1NodesLatency;
+	private long remove5NodesLatency;
+	private long remove10NodesLatency;
 	private int numReqests; 
 	private Integer numer_of_servers;
 	private Integer numer_of_clients;
@@ -31,8 +42,8 @@ public class Performance {
 	private ECS ecs = null;
     private String CACHE_STRATEGY;
     private Integer CACHE_SIZE;
-    private List<KVServer> servers = new ArrayList<>();
     private List<KVStore> clients = new ArrayList<>();
+    private Map<ECSNode, KVServer> serverTable = new HashMap<>();
     private List<ClientPutSession> putSessions = new ArrayList<>();
     private List<ClientGetSession> getSessions = new ArrayList<>();
     private List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/all_documents");
@@ -49,6 +60,8 @@ public class Performance {
 	    this.CACHE_STRATEGY = strategy;
 	    //initialize and start the required number of servers
 		ecs = new ECS("ecs.config");
+        ecs.clearRestoreList();
+        ecs.locally = true;
 		assertNotNull(ecs);
 		this.addNodes(numNodes);
 		boolean ret = ecs.start();
@@ -59,8 +72,9 @@ public class Performance {
 		Random rand = new Random();
 		for (i=0; i<numClients; i++) {
 			//get a random server first to connect
-			j = rand.nextInt(numNodes);
-			KVStore store = new KVStore(servers.get(j).getHostname(), servers.get(j).getPort());
+			Object[] crunchifyKeys = serverTable.keySet().toArray();
+			Object key = crunchifyKeys[new Random().nextInt(crunchifyKeys.length)];
+			KVStore store = new KVStore(serverTable.get(key).getHostname(), serverTable.get(key).getPort());
             store.connect();
             clients.add(store);
 		}
@@ -74,13 +88,14 @@ public class Performance {
         for (IECSNode node : nodes) {
             KVServer server = new KVServer(node.getNodePort(), node.getNodeName(),
                     ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT));
-            servers.add(server);
+            serverTable.put((ECSNode) node, server);
             server.clearStorage();
             new Thread(server).start();
         }
         boolean ret = ecs.awaitNodes(count, ECS.ZK_TIMEOUT);
         assertTrue(ret);
     }
+    
     
     public void startTest() throws Exception {
     		int num = this.numReqests / this.clients.size(); 
@@ -110,7 +125,7 @@ public class Performance {
     		}
     		long end = System.nanoTime();
     		this.totalPutLatency = end-start;
-    		
+        
     		//performance metrics for get requests
     		start = System.nanoTime();
     		for (ClientGetSession sessiong : getSessions) {
@@ -131,6 +146,59 @@ public class Performance {
     		}
     		end = System.nanoTime();
     		this.totalGetLatency = end-start;
+    		
+    		start = System.nanoTime();
+    		this.addNodes(1);
+        ecs.start();
+        end = System.nanoTime();
+        this.add1NodesLatency = end - start;
+        Thread.sleep(200);
+        /*    
+    		start = System.nanoTime();
+        this.addNodes(5);
+        ecs.start();
+        end = System.nanoTime();
+        this.add5NodesLatency = end - start;
+        Thread.sleep(200);
+        
+         
+    		start = System.nanoTime();
+        this.addNodes(10);
+        ecs.start();
+        end = System.nanoTime();
+        this.add10NodesLatency = end - start;
+        Thread.sleep(200);*/
+        
+        /*
+        start = System.nanoTime();
+		this.RemoveNodes(1);
+		end = System.nanoTime();
+		this.remove1NodesLatency = end - start;
+		Thread.sleep(200);
+		
+        start = System.nanoTime();
+		this.RemoveNodes(5);
+		end = System.nanoTime();
+		this.remove5NodesLatency = end - start;
+		Thread.sleep(200);
+		
+        start = System.nanoTime();
+		this.RemoveNodes(10);
+		end = System.nanoTime();
+		this.remove10NodesLatency = end - start;
+		Thread.sleep(200);
+        */    
+    }
+    
+    public void RemoveNodes(Integer number) throws Exception {
+        ArrayList<ECSNode> nodes = new ArrayList<>(serverTable.keySet());
+        // Remove the first two nodes
+        List<ECSNode> toRemove = nodes.subList(0, number);
+        boolean ret = ecs.removeNodes(
+                toRemove.stream().map(ECSNode::getNodeName)
+                        .collect(Collectors.toList()));
+        assertTrue(ret);
+        toRemove.forEach(serverTable::remove);
     }
 	
 	public float totalLatency() {
@@ -157,27 +225,60 @@ public class Performance {
 		return averageGetLat/1000000;
 	}
 	
+	public float get1AddNodesTime() {
+		System.out.println("Add One Node Latency in mili seconds is:" + this.add1NodesLatency/1000000);
+		return this.add1NodesLatency/1000000;
+	}
+	public float get5AddNodesTime() {
+		System.out.println("Add Five Node Latency in mili seconds is:" + this.add5NodesLatency/1000000);
+		return this.add5NodesLatency/1000000;
+	}
+	public float get10AddNodesTime() {
+		System.out.println("Add Ten Node Latency in mili seconds is:" + this.add10NodesLatency/1000000);
+		return this.add10NodesLatency/1000000;
+	}
+	
+	public float get1RemoveNodesTime() {
+		System.out.println("Remove One Node Latency in mili seconds is:" + this.remove1NodesLatency/1000000);
+		return this.remove1NodesLatency/1000000;
+	}
+	public float get5RemoveNodesTime() {
+		System.out.println("Remove Five Node Latency in mili seconds is:" + this.remove5NodesLatency/1000000);
+		return this.remove5NodesLatency/1000000;
+	}
+	public float get10RemoveNodesTime() {
+		System.out.println("Remove Ten Node Latency in mili seconds is:" + this.remove10NodesLatency/1000000);
+		return this.remove10NodesLatency/1000000;
+	}
+	
 	public void Shutdown() throws Exception {
         boolean ret = this.ecs.shutdown();
+        Thread.sleep(2000);
         assertTrue(ret);
     }
 	
 	public static void main(String[] args)  {
 		//define cache size here
-		int cacheSize=50;
+		int cacheSize=30;
 		//ensure numRequest / numClients is a integer
 		//ensure numRequest is an even number
-		int numRequest=1000;
+		int numRequest=10;
 		String cacheStrategy = "FIFO";
-		int numClients = 5;
-		int numServers = 15;
+		int numClients = 1;
+		int numServers = 5;
 
 		try {
 			 new LogSetup("logs/testing/performance.log", Level.ERROR);
 			 Performance performance = new Performance(cacheSize, cacheStrategy, 
 					 numServers, numClients, numRequest);
 			 performance.startTest();
-			 performance.totalLatency();
+			 //latency to add 1, 5, 10 nodes
+			 performance.get1AddNodesTime();
+			 performance.get5AddNodesTime();
+			 performance.get10AddNodesTime();
+			 performance.get1RemoveNodesTime();
+			 performance.get5RemoveNodesTime();
+			 performance.get10RemoveNodesTime();
 			 performance.averageLatency();
 			 performance.averageGetLatency();
 			 performance.averagePutLatency();
