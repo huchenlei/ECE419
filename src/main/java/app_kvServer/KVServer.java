@@ -1,6 +1,7 @@
 package app_kvServer;
 
 import com.google.gson.Gson;
+import common.NetworkUtils;
 import common.messages.KVAdminMessage;
 import ecs.ECS;
 import ecs.ECSHashRing;
@@ -202,7 +203,12 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         try {
             // add an alive node for failure detection
             if (zk.exists(ECS.ZK_ACTIVE_ROOT, false) != null) {
-                zk.create(ECS.ZK_ACTIVE_ROOT + "/" + this.serverName, "".getBytes(),
+                String alivePath = ECS.ZK_ACTIVE_ROOT + "/" + this.serverName;
+                if (zk.exists(alivePath, false) != null){
+                    zk.delete(alivePath, zk.exists(alivePath, false).getVersion());
+                    logger.info(prompt() + "Remove exist alive node");
+                }
+                zk.create(alivePath, "".getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
                 logger.debug(prompt() + "Alive node created");
             }
@@ -445,11 +451,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public String getHostname() {
-        if (serverSocket == null) {
-            return null;
-        } else {
-            return serverSocket.getInetAddress().getHostName();
-        }
+        return NetworkUtils.getCurrentHost();
     }
 
     @Override
