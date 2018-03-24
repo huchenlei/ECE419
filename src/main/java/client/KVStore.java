@@ -79,6 +79,9 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
     private KVMessage handleShutdown(KVMessage req) {
         disconnect();
         String hash = ECSNode.calcHash(req.getKey());
+        if (hashRing.empty()) {
+            return null;
+        }
         ECSNode toRemove = hashRing.getNodeByKey(hash);
         logger.info("Now remove the node " + toRemove.getNodeName());
         hashRing.removeNode(toRemove);

@@ -516,13 +516,15 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     @Override
     public void clearCache() {
         logger.info(prompt() + "Cache cleared");
-        cache.clear();
+        if (cache != null)
+            cache.clear();
     }
 
     @Override
     public void clearStorage() {
         store.clearStorage();
-        cache.clear();
+        if (cache != null)
+            cache.clear();
     }
 
     /**
