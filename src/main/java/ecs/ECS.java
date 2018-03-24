@@ -334,6 +334,11 @@ public class ECS implements IECSClient {
             KVServer server = new KVServer(node.getNodePort(), node.getNodeName(),
                     ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT));
             new Thread(server).start();
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         try {
             awaitNodes(nodes.size(), ZK_TIMEOUT);
