@@ -273,14 +273,14 @@ public class ECS implements IECSClient {
         hashRing.removeAll();
         nodeTable.values()
                 .forEach(n -> ((ECSNode) n).setStatus(ECSNode.ServerStatus.OFFLINE));
-        nodePool.addAll(nodeTable.values());
-        nodeTable.clear();
         ret = updateMetadata();
 
         ECSMulticaster multicaster = new ECSMulticaster(zk, nodeTable.values()
                 .stream().map((n) -> (ECSNode) n).collect(Collectors.toList()));
         ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
 
+        nodePool.addAll(nodeTable.values());
+        nodeTable.clear();
         return ret;
     }
 
@@ -334,6 +334,11 @@ public class ECS implements IECSClient {
             KVServer server = new KVServer(node.getNodePort(), node.getNodeName(),
                     ECS.ZK_HOST, Integer.parseInt(ECS.ZK_PORT));
             new Thread(server).start();
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         try {
             awaitNodes(nodes.size(), ZK_TIMEOUT);
@@ -354,7 +359,7 @@ public class ECS implements IECSClient {
                     ZK_HOST,
                     ZK_PORT);
             String sshCmd = "ssh -o StrictHostKeyChecking=no -n " + n.getNodeHost() + " nohup " + javaCmd +
-                    " &";
+                    " > server.log &";
             // Redirect output to files so that ssh channel will not wait for further output
             try {
                 logger.info("Executing command: " + sshCmd);
@@ -414,12 +419,17 @@ public class ECS implements IECSClient {
         byte[] metadata = new Gson().toJson(new ServerMetaData(cacheStrategy, cacheSize)).getBytes();
         // create corresponding Z-nodes on zookeeper server
         try {
+
+
+            Stat existActive = zk.exists(ZK_ACTIVE_ROOT, false);
+            if (existActive == null) {
+               	zk.create(ZK_ACTIVE_ROOT, "".getBytes(),
+                    ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+
+
             if (zk.exists(ZK_SERVER_ROOT, false) == null) {
                 zk.create(ZK_SERVER_ROOT, "".getBytes(),
-                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-            }
-            if (zk.exists(ZK_ACTIVE_ROOT, false) == null) {
-                zk.create(ZK_ACTIVE_ROOT, "".getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             }
 
