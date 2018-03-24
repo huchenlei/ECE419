@@ -476,13 +476,25 @@ public class ECS implements IECSClient {
         ECSMulticaster multicaster = new ECSMulticaster(zk, toWait);
         boolean ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.INIT));
 
+        Integer MAX_RETRY = 5;
         for (ECSNode node : toWait) {
             node.setStatus(ECSNode.ServerStatus.STOP);
-            Stat exists = zk.exists(ZK_ACTIVE_ROOT + "/" + node.getNodeName(),
-                    null);
-			zk.getData(ZK_ACTIVE_ROOT + "/" + node.getNodeName(),
-                    new ECSFailureDetector(this, node.getNodeName()), exists);
-            assert exists != null;
+            Integer retry = 0;
+
+            while (true) {
+                try {
+                    Stat exists = zk.exists(ZK_ACTIVE_ROOT + "/" + node.getNodeName(),
+                            null);
+                    zk.getData(ZK_ACTIVE_ROOT + "/" + node.getNodeName(),
+                            new ECSFailureDetector(this, node.getNodeName()), exists);
+                    break;
+                } catch (KeeperException e) {
+                    if (retry >= MAX_RETRY)
+                        throw e;
+                    Thread.sleep(retry * 500);
+                    retry++;
+                }
+            }
         }
 
         return ret;
