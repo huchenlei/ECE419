@@ -479,7 +479,9 @@ public class ECS implements IECSClient {
         for (ECSNode node : toWait) {
             node.setStatus(ECSNode.ServerStatus.STOP);
             Stat exists = zk.exists(ZK_ACTIVE_ROOT + "/" + node.getNodeName(),
-                    new ECSFailureDetector(this, node.getNodeName()));
+                    null);
+			zk.getData(ZK_ACTIVE_ROOT + "/" + node.getNodeName(),
+                    new ECSFailureDetector(this, node.getNodeName()), exists);
             assert exists != null;
         }
 

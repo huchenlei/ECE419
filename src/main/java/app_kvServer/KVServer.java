@@ -206,8 +206,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 String alivePath = ECS.ZK_ACTIVE_ROOT + "/" + this.serverName;
                 zk.create(alivePath, "".getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-                logger.debug(prompt() + "Alive node created");
-            }
+                logger.info(prompt() + "Alive node created");
+            } else {
+				logger.fatal(prompt() + "Active root not exist!");
+			}
 
         } catch (KeeperException | InterruptedException e) {
             logger.error(prompt() + "Unable to create an ephemeral node");
