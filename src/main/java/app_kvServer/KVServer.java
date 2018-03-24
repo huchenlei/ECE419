@@ -278,9 +278,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     @Override
     public void process(WatchedEvent event) {
-        if (!running) {
-            return;
-        }
         List<String> children;
         try {
             children = zk.getChildren(zkPath, false, null);
