@@ -7,8 +7,6 @@ import ecs.IECSNode;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -21,7 +19,7 @@ public class ECSClient implements Runnable {
     private BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
     private boolean running = false;
 
-    private IECSClient ecs;
+    private ECS ecs;
 
     public ECSClient(String configFileName) throws IOException {
         ecs = new ECS(configFileName);
@@ -36,6 +34,7 @@ public class ECSClient implements Runnable {
             put("addNode", 2);
             put("removeNodes", 1); // remove at least one node
             put("quit", 0);
+            put("clear", 0);
         }
     };
 
@@ -88,6 +87,10 @@ public class ECSClient implements Runnable {
                 case "quit":
                     this.running = false;
                     result = ecs.shutdown();
+                    break;
+                case "clear":
+                    ecs.clearRestoreList();
+                    result = true;
                     break;
                 default:
                     printError("Unknown command!");
