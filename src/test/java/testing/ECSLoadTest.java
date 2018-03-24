@@ -73,6 +73,8 @@ public class ECSLoadTest extends TestCase {
                 serverTable.put((ECSNode) node, server);
                 server.clearStorage();
                 new Thread(server).start();
+
+                Thread.sleep(100); // wait for server to initialize
             }
             boolean ret = ecs.awaitNodes(count, ECS.ZK_TIMEOUT);
             assertTrue(ret);
