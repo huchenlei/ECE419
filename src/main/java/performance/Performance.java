@@ -11,6 +11,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
+
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
@@ -61,7 +63,6 @@ public class Performance {
         ecs.clearRestoreList();
         ecs.locally = true;
 		assertNotNull(ecs);
-		//ecs.addNodes(numNodes, this.CACHE_STRATEGY, this.CACHE_SIZE);
 		this.addNodes(numNodes);
 		boolean ret = ecs.start();
         assertTrue(ret);
@@ -147,27 +148,57 @@ public class Performance {
     		this.totalGetLatency = end-start;
     		
     		start = System.nanoTime();
-        ecs.addNodes(1,this.CACHE_STRATEGY, this.CACHE_SIZE);
+    		this.addNodes(1);
         ecs.start();
         end = System.nanoTime();
         this.add1NodesLatency = end - start;
         Thread.sleep(200);
-          
+        /*    
     		start = System.nanoTime();
-        ecs.addNodes(5,this.CACHE_STRATEGY, this.CACHE_SIZE);
+        this.addNodes(5);
         ecs.start();
         end = System.nanoTime();
         this.add5NodesLatency = end - start;
         Thread.sleep(200);
         
-        /*   
+         
     		start = System.nanoTime();
-        ecs.addNodes(10,this.CACHE_STRATEGY, this.CACHE_SIZE);
+        this.addNodes(10);
         ecs.start();
         end = System.nanoTime();
         this.add10NodesLatency = end - start;
         Thread.sleep(200);*/
-            
+        
+        /*
+        start = System.nanoTime();
+		this.RemoveNodes(1);
+		end = System.nanoTime();
+		this.remove1NodesLatency = end - start;
+		Thread.sleep(200);
+		
+        start = System.nanoTime();
+		this.RemoveNodes(5);
+		end = System.nanoTime();
+		this.remove5NodesLatency = end - start;
+		Thread.sleep(200);
+		
+        start = System.nanoTime();
+		this.RemoveNodes(10);
+		end = System.nanoTime();
+		this.remove10NodesLatency = end - start;
+		Thread.sleep(200);
+        */    
+    }
+    
+    public void RemoveNodes(Integer number) throws Exception {
+        ArrayList<ECSNode> nodes = new ArrayList<>(serverTable.keySet());
+        // Remove the first two nodes
+        List<ECSNode> toRemove = nodes.subList(0, number);
+        boolean ret = ecs.removeNodes(
+                toRemove.stream().map(ECSNode::getNodeName)
+                        .collect(Collectors.toList()));
+        assertTrue(ret);
+        toRemove.forEach(serverTable::remove);
     }
 	
 	public float totalLatency() {
