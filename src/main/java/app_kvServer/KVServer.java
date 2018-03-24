@@ -219,9 +219,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, new Watcher() {
                 // handle hashRing update
                 public void process(WatchedEvent we) {
-                    if (!running) {
-                        return;
-                    }
                     try {
                         byte[] hashRingData = zk.getData(ECS.ZK_METADATA_ROOT, this, null);
                         hashRingString = new String(hashRingData);
@@ -516,7 +513,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
      */
     @Override
     public void kill() {
-        running = false;
+
         try {
             if (serverSocket != null)
                 serverSocket.close();
@@ -527,7 +524,9 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             if (zk.exists(alivePath, false) != null) {
                 zk.delete(alivePath, zk.exists(alivePath, false).getVersion());
                 logger.info(prompt() + "Remove exist alive node");
-            }
+            } else {
+				logger.error(prompt() + alivePath + " NOT exist!");
+			}
             zk.close();
         } catch (IOException e) {
             logger.error(prompt() + "Unable to close socket on port: " + port, e);
@@ -536,6 +535,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         } catch (KeeperException e) {
             logger.error(prompt() + "can not remove alive node");
         }
+        running = false;
     }
 
     @Override

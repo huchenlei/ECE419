@@ -137,18 +137,6 @@ public class ECS implements IECSClient {
             e.printStackTrace();
         }
 
-        try {
-            Stat existActive = zk.exists(ZK_ACTIVE_ROOT, false);
-            if (existActive != null) {
-                zk.delete(ZK_ACTIVE_ROOT, existActive.getVersion());
-            }
-            zk.create(ZK_ACTIVE_ROOT, "".getBytes(),
-                    ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-        } catch (InterruptedException | KeeperException e) {
-            logger.error("Unable to create " + ZK_ACTIVE_ROOT);
-            e.printStackTrace();
-        }
-
         updateMetadata();
 
         logger.info("ECS started with ZooKeeper " + ZK_CONN);
@@ -371,7 +359,7 @@ public class ECS implements IECSClient {
                     ZK_HOST,
                     ZK_PORT);
             String sshCmd = "ssh -o StrictHostKeyChecking=no -n " + n.getNodeHost() + " nohup " + javaCmd +
-                    " &";
+                    " > server.log &";
             // Redirect output to files so that ssh channel will not wait for further output
             try {
                 logger.info("Executing command: " + sshCmd);
@@ -431,6 +419,15 @@ public class ECS implements IECSClient {
         byte[] metadata = new Gson().toJson(new ServerMetaData(cacheStrategy, cacheSize)).getBytes();
         // create corresponding Z-nodes on zookeeper server
         try {
+
+
+            Stat existActive = zk.exists(ZK_ACTIVE_ROOT, false);
+            if (existActive == null) {
+               	zk.create(ZK_ACTIVE_ROOT, "".getBytes(),
+                    ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+
+
             if (zk.exists(ZK_SERVER_ROOT, false) == null) {
                 zk.create(ZK_SERVER_ROOT, "".getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);

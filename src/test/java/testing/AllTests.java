@@ -38,7 +38,7 @@ public class AllTests {
                 HashRingTest.class,
                 ECSBasicTest.class,
                 ECSLoadTest.class,
-                ServerTest.class,
+                //ServerTest.class,
                 DataDistributionManagerTest.class,
                 SQLTableTest.class,
                 SQLExecutorTest.class,
