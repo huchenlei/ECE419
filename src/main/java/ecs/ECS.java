@@ -137,6 +137,18 @@ public class ECS implements IECSClient {
             e.printStackTrace();
         }
 
+        try {
+            Stat existActive = zk.exists(ZK_ACTIVE_ROOT, false);
+            if (existActive != null) {
+                zk.delete(ZK_ACTIVE_ROOT, existActive.getVersion());
+            }
+            zk.create(ZK_ACTIVE_ROOT, "".getBytes(),
+                    ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        } catch (InterruptedException | KeeperException e) {
+            logger.error("Unable to create " + ZK_ACTIVE_ROOT);
+            e.printStackTrace();
+        }
+
         updateMetadata();
 
         logger.info("ECS started with ZooKeeper " + ZK_CONN);
@@ -273,14 +285,14 @@ public class ECS implements IECSClient {
         hashRing.removeAll();
         nodeTable.values()
                 .forEach(n -> ((ECSNode) n).setStatus(ECSNode.ServerStatus.OFFLINE));
-        nodePool.addAll(nodeTable.values());
-        nodeTable.clear();
         ret = updateMetadata();
 
         ECSMulticaster multicaster = new ECSMulticaster(zk, nodeTable.values()
                 .stream().map((n) -> (ECSNode) n).collect(Collectors.toList()));
         ret = multicaster.send(new KVAdminMessage(KVAdminMessage.OperationType.SHUT_DOWN));
 
+        nodePool.addAll(nodeTable.values());
+        nodeTable.clear();
         return ret;
     }
 
@@ -421,10 +433,6 @@ public class ECS implements IECSClient {
         try {
             if (zk.exists(ZK_SERVER_ROOT, false) == null) {
                 zk.create(ZK_SERVER_ROOT, "".getBytes(),
-                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-            }
-            if (zk.exists(ZK_ACTIVE_ROOT, false) == null) {
-                zk.create(ZK_ACTIVE_ROOT, "".getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             }
 
