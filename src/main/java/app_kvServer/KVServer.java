@@ -185,7 +185,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
         try {
             //remove the init message if have
-            List<String> children = zk.getChildren(zkPath, false, null);
+            List<String> children = zk.getChildren(zkPath, this, null);
             if (!children.isEmpty()) {
                 String messagePath = zkPath + "/" + children.get(0);
                 byte[] data = zk.getData(messagePath, false, null);
@@ -274,13 +274,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         this.store = new KVIterateStore(name + "_iterateDataBase");
         this.sqlStore = new SQLIterateStore(serverName, zk, (KVIterateStore) store);
 
-        try {
-            // set watcher on childrens
-            zk.getChildren(this.zkPath, this, null);
-        } catch (InterruptedException | KeeperException e) {
-            logger.debug(prompt() + "Unable to get set watcher on children");
-            e.printStackTrace();
-        }
 
 
     }
@@ -534,8 +527,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     public void kill() {
         running = false;
         try {
-            serverSocket.close();
-            forwarderManager.clear();
+            if (serverSocket != null)
+                serverSocket.close();
+            if (forwarderManager != null)
+                forwarderManager.clear();
             zk.close();
         } catch (IOException e) {
             logger.debug(prompt() + "Unable to close socket on port: " + port, e);
