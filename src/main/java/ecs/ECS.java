@@ -500,10 +500,15 @@ public class ECS implements IECSClient {
                 e.printStackTrace();
             }
         }
-        nodeTable.remove(name);
-        nodePool.add(generalNodeTable.get(name));
+        handleStopNodeShutDown(name);
         ret = updateMetadata();
         return ret;
+    }
+
+    public void handleStopNodeShutDown(String name) {
+        nodeTable.remove(name);
+        nodePool.add(generalNodeTable.get(name));
+        generalNodeTable.get(name).setStatus(ECSNode.ServerStatus.OFFLINE);
     }
 
     @Override
