@@ -185,7 +185,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
         try {
             //remove the init message if have
-            List<String> children = zk.getChildren(zkPath, false, null);
+            List<String> children = zk.getChildren(zkPath, this, null);
             if (!children.isEmpty()) {
                 String messagePath = zkPath + "/" + children.get(0);
                 byte[] data = zk.getData(messagePath, false, null);
@@ -204,7 +204,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             // add an alive node for failure detection
             if (zk.exists(ECS.ZK_ACTIVE_ROOT, false) != null) {
                 String alivePath = ECS.ZK_ACTIVE_ROOT + "/" + this.serverName;
-                if (zk.exists(alivePath, false) != null){
+                if (zk.exists(alivePath, false) != null) {
                     zk.delete(alivePath, zk.exists(alivePath, false).getVersion());
                     logger.info(prompt() + "Remove exist alive node");
                 }
@@ -274,15 +274,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         this.store = new KVIterateStore(name + "_iterateDataBase");
         this.sqlStore = new SQLIterateStore(serverName, zk, (KVIterateStore) store);
 
-        try {
-            // set watcher on childrens
-            zk.getChildren(this.zkPath, this, null);
-        } catch (InterruptedException | KeeperException e) {
-            logger.debug(prompt() + "Unable to get set watcher on children");
-            e.printStackTrace();
-        }
-
-
     }
 
     @Override
@@ -290,7 +281,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
         if (!running) {
             return;
         }
-        List<String> children = null;
+        List<String> children;
         try {
             children = zk.getChildren(zkPath, false, null);
             if (children.isEmpty()) {
@@ -298,7 +289,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 zk.getChildren(zkPath, this, null);
                 return;
             }
-
+            assert children.size() == 1;
             String path = zkPath + "/" + children.get(0);
 
             // handling event, assume there is only one message named "message"
