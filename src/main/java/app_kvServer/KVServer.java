@@ -204,10 +204,6 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             // add an alive node for failure detection
             if (zk.exists(ECS.ZK_ACTIVE_ROOT, false) != null) {
                 String alivePath = ECS.ZK_ACTIVE_ROOT + "/" + this.serverName;
-                if (zk.exists(alivePath, false) != null) {
-                    zk.delete(alivePath, zk.exists(alivePath, false).getVersion());
-                    logger.info(prompt() + "Remove exist alive node");
-                }
                 zk.create(alivePath, "".getBytes(),
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
                 logger.debug(prompt() + "Alive node created");
@@ -522,13 +518,23 @@ public class KVServer implements IKVServer, Runnable, Watcher {
     public void kill() {
         running = false;
         try {
-            serverSocket.close();
-            forwarderManager.clear();
+            if (serverSocket != null)
+                serverSocket.close();
+            if (forwarderManager != null)
+                forwarderManager.clear();
+
+            String alivePath = ECS.ZK_ACTIVE_ROOT + "/" + this.serverName;
+            if (zk.exists(alivePath, false) != null) {
+                zk.delete(alivePath, zk.exists(alivePath, false).getVersion());
+                logger.info(prompt() + "Remove exist alive node");
+            }
             zk.close();
         } catch (IOException e) {
-            logger.debug(prompt() + "Unable to close socket on port: " + port, e);
+            logger.error(prompt() + "Unable to close socket on port: " + port, e);
         } catch (InterruptedException e) {
             e.printStackTrace();
+        } catch (KeeperException e) {
+            logger.error(prompt() + "can not remove alive node");
         }
     }
 
