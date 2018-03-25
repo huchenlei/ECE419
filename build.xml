@@ -21,10 +21,13 @@
     <property name="client.manifest.file" value="MANIFEST_CLIENT.MF"/>
     <property name="ecs.jar.file" value="ecs.jar"/>
     <property name="ecs.manifest.file" value="MANIFEST_ECS.MF"/>
+    <property name="performance.jar.file" value="performance.jar"/>
+    <property name="performance.manifest.file" value="MANIFEST_PERFORMANCE.MF"/>
 
     <property name="server.main.class" value="app_kvServer.KVServer"/>
     <property name="client.main.class" value="app_kvClient.KVClient"/>
     <property name="ecs.main.class" value="app_kvECS.ECSClient"/>
+    <property name="performance.main.class" value="performance.Performance"/>
 
     <!-- install ivy if you don't have ivyide-->
     <target name="ivy" description="Install ivy">
@@ -82,7 +85,12 @@
         <delete file="${ecs.manifest.file}"/>
     </target>
 
-    <target name="clean-all" depends="clean-server, clean-client, clean-ecs">
+    <target name="clean-performance">
+        <delete file="${performance.jar.file}"/>
+        <delete file="${performance.manifest.file}"/>
+    </target>
+
+    <target name="clean-all" depends="clean-server, clean-client, clean-ecs, clean-performance">
         <delete dir="${build.dir}"/>
         <delete dir="${log.dir}"/>
     </target>
@@ -97,7 +105,7 @@
         </javac>
     </target>
 
-    <target name="build-jar" depends="build-jar-server, build-jar-client, build-jar-ecs"/>
+    <target name="build-jar" depends="build-jar-server, build-jar-client, build-jar-ecs, build-jar-performance"/>
 
     <!--TODO can be written as macro-->
     <target name="build-jar-server" depends="build">
@@ -127,6 +135,22 @@
         </manifest>
 
         <jar destfile="${client.jar.file}" basedir="${build.dir}" manifest="${client.manifest.file}">
+            <fileset dir="${build.dir}" includes="**/*.class"/>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar"/>
+        </jar>
+    </target>
+
+    <target name="build-jar-performance" depends="build">
+        <delete file="${performance.jar.file}"/>
+        <delete file="${performance.manifest.file}"/>
+
+        <manifest file="${performance.manifest.file}">
+            <attribute name="built-by" value="${user.name}"/>
+            <attribute name="Main-Class" value="${performance.main.class}"/>
+            <attribute name="Class-Path" value="libs/log4j-1.2.17.jar"/>
+        </manifest>
+
+        <jar destfile="${performance.jar.file}" basedir="${build.dir}" manifest="${performance.manifest.file}">
             <fileset dir="${build.dir}" includes="**/*.class"/>
             <zipgroupfileset dir="${lib.dir}" includes="**/*.jar"/>
         </jar>
