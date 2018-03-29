@@ -17,6 +17,7 @@ import java.math.BigInteger;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -60,12 +61,9 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                         return;
                     }
                     KVMessage res;
-                    if (req.getStatus() == KVMessage.StatusType.SQL)
-                        res = handleSQL(req);
-                    else
-                        res = handleMsg(req);
 
-                    logger.info(kvServer.prompt() + "Send back response" + res);
+                    res = handleMsg(req);
+
                     sendMessage(new TextMessage(res.encode()));
                 } catch (IOException ioe) {
                     logger.warn("Connection lost (" + this.clientSocket.getInetAddress().getHostName()
@@ -81,16 +79,6 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         }
     }
 
-    private KVMessage handleSQL(KVMessage msg) {
-        String ret = executor.executeSQL(msg.getValue());
-        KVMessage res = AbstractKVMessage.createMessage();
-        assert res != null;
-        res.setKey(msg.getKey());
-        res.setStatus(KVMessage.StatusType.SQL);
-        res.setValue(ret);
-        return res;
-    }
-
     private boolean isResponsible(KVMessage m) {
         ECSHashRing hashRing = kvServer.getHashRing();
 
@@ -103,15 +91,18 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
         String serverName = kvServer.getServerName();
         Boolean responsible = node.getNodeName().equals(serverName);
-        if (m.getStatus().equals(KVMessage.StatusType.GET)
-                || m.getStatus().equals(KVMessage.StatusType.PUT_REPLICATE)) {
+        List<KVMessage.StatusType> allowedTypes = Arrays.asList(
+                KVMessage.StatusType.GET,
+                KVMessage.StatusType.PUT_REPLICATE,
+                KVMessage.StatusType.SQL_REPLICATE);
+
+        if (allowedTypes.contains(m.getStatus())) {
             Collection<ECSNode> replicationNodes =
                     hashRing.getReplicationNodes(node);
             responsible = responsible || replicationNodes.stream()
                     .map(ECSNode::getNodeName)
                     .collect(Collectors.toList())
                     .contains(serverName);
-
         }
         return responsible;
     }
@@ -219,6 +210,25 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                     res.setStatus(KVMessage.StatusType.PUT_UPDATE);
                 } else {
                     res.setStatus(KVMessage.StatusType.PUT_SUCCESS);
+                }
+                break;
+            }
+
+            case SQL_REPLICATE:
+            case SQL: {
+                String result = executor.executeSQL(m.getValue());
+                res.setStatus(KVMessage.StatusType.SQL_SUCCESS);
+                res.setValue(result);
+
+                try {
+                    if (m.getStatus() == KVMessage.StatusType.SQL) {
+                        forwarderManager.forward(m);
+                    }
+                } catch (IOException | KVServerForwarder.ForwardFailedException e) {
+                    logger.warn("Failed to replicate SQL command!");
+                    logger.warn(e.getMessage());
+                    e.printStackTrace();
+                    res.setStatus(KVMessage.StatusType.SQL_ERROR);
                 }
                 break;
             }

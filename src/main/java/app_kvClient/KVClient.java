@@ -85,6 +85,8 @@ public class KVClient implements IKVClient, Runnable {
                     KVMessage res = client.get(tokens[1]);
                     if (res != null) {
                         printMessage(res);
+                    } else {
+                        printError("Something wrong");
                     }
                     break;
                 }
@@ -93,13 +95,20 @@ public class KVClient implements IKVClient, Runnable {
                     KVMessage res = client.put(tokens[1], tokens[2]);
                     if (res != null) {
                         printMessage(res);
+                    } else {
+                        printError("Something wrong");
                     }
                     break;
                 }
                 case "sql":
                     // Send SQL request
                     String sql = cmdLine.substring(4);
-                    // TODO
+                    KVMessage res = client.sql(sql);
+                    if (res != null) {
+                        printMessage(res);
+                    } else {
+                        printError("Something wrong");
+                    }
                     break;
                 case "logLevel":
                     checkArgumentNum(tokens, 2);

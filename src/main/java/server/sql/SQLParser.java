@@ -19,7 +19,7 @@ public class SQLParser {
         Map<String, Object> newVal;
         Map<String, Class> schema;
 
-        String table;
+        public String table;
 
         public boolean lt(Map<String, Object> obj) {
             return (Double) obj.get(conditionCol) < conditionComparator;

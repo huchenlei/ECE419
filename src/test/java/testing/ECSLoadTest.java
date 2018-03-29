@@ -14,6 +14,7 @@ import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import performance.DataParser;
+import server.sql.SQLIterateTable;
 
 import java.io.IOException;
 import java.util.*;
@@ -38,7 +39,25 @@ public class ECSLoadTest extends TestCase {
     private Exception ex = null;
     private static Map<ECSNode, KVServer> serverTable = new HashMap<>();
     private static List<KVStore> clients = new ArrayList<>();
-    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox").subList(0,10);
+    private static List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/inbox").subList(0, 20);
+    private static Map<String, List<Map<String, Object>>> sqlObjTable = new HashMap<>();
+
+    static {
+        for (String table : Arrays.asList("student", "teacher")) {
+            List<Map<String, Object>> objList = new ArrayList<>();
+            for (int i = 0; i < 10; i++) {
+                Map<String, Object> obj = new HashMap<>();
+                obj.put("name", table + i);
+                obj.put("age", (double) i + 10);
+                objList.add(obj);
+            }
+            sqlObjTable.put(table, objList);
+        }
+    }
+
+    private static String objInsertString(String table, Map<String, Object> obj) {
+        return "insert " + SQLIterateTable.mapToJson(obj) + " to " + table;
+    }
 
     static class TestHelper {
         static final Integer ACCESS_NUM = 64;
@@ -131,14 +150,35 @@ public class ECSLoadTest extends TestCase {
      * Populate the servers with enron dataset
      */
     public void test04PutData() throws Exception {
+        // Test put
         for (KVMessage msg : msgs) {
             KVStore client = getRandomClient();
             KVMessage ret = client.put(msg.getKey(), msg.getValue());
             assertTrue(Arrays.asList(KVMessage.StatusType.PUT_SUCCESS,
                     KVMessage.StatusType.PUT_UPDATE).contains(ret.getStatus()));
         }
+        logger.info("PUT data complete");
         // Confirm data stored
         testGetData();
+        logger.info("GET data verification complete");
+
+        // Test SQL insert
+        KVStore client = getRandomClient();
+        for (String table : sqlObjTable.keySet()) {
+            KVMessage ret = client.sql("create " + table + " age:number,name:string");
+            assertEquals(KVMessage.StatusType.SQL_SUCCESS, ret.getStatus());
+            logger.info(ret.getValue());
+        }
+        logger.info("CREATE tables complete");
+
+        for (Map.Entry<String, List<Map<String, Object>>> entry : sqlObjTable.entrySet()) {
+            for (Map<String, Object> obj : entry.getValue()) {
+                KVMessage ret = client.sql(objInsertString(entry.getKey(), obj));
+                assertEquals(KVMessage.StatusType.SQL_SUCCESS, ret.getStatus());
+                logger.info(ret.getValue());
+            }
+        }
+        logger.info("INSERT data to tables complete");
     }
 
     /**
@@ -192,7 +232,7 @@ public class ECSLoadTest extends TestCase {
         KVServer server = it.next();
         server.kill();
         // Wait long enough for server to transfer data
-        Thread.sleep(20000);
+        Thread.sleep(15000);
         test04PutData();
     }
 

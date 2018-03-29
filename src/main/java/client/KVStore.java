@@ -6,6 +6,8 @@ import common.messages.AbstractKVMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
+import server.sql.SQLParser;
+import server.sql.SQLScanner;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -76,6 +78,17 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         return request(req);
     }
 
+    public KVMessage sql(String sqlString) throws IOException {
+        KVMessage req = AbstractKVMessage.createMessage();
+        assert req != null;
+        req.setStatus(KVMessage.StatusType.SQL);
+        String table = SQLParser.parse(SQLScanner.scan(sqlString)).table;
+        req.setKey(ECSNode.calcHash(table));
+        req.setValue(sqlString);
+        return request(req);
+    }
+
+
     private KVMessage handleShutdown(KVMessage req) {
         disconnect();
         String hash = ECSNode.calcHash(req.getKey());
@@ -92,19 +105,31 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
                 this.port = newServer.getNodePort();
                 logger.info("Now connect to " + this.address + ":" + this.port);
                 connect();
-                if (req.getStatus().equals(KVMessage.StatusType.PUT)) {
-                    return this.put(req.getKey(), req.getValue());
-                }
-                return this.get(req.getKey());
+                return dispatchRequest(req);
             }
             return null;
         } catch (IOException e) {
+            logger.warn(e.getMessage());
             return handleShutdown(req);
+        }
+    }
+
+    private KVMessage dispatchRequest(KVMessage req) throws IOException {
+        switch (req.getStatus()) {
+            case PUT:
+                return this.put(req.getKey(), req.getValue());
+            case GET:
+                return this.get(req.getKey());
+            case SQL:
+                return this.sql(req.getValue());
+            default:
+                return null;
         }
     }
 
     private void dispatchToCorrectServer(KVMessage req) throws IOException {
         if (hashRing == null) return;
+        assert req != null;
         String hash = ECSNode.calcHash(req.getKey());
         ECSNode node = hashRing.getNodeByKey(hash);
 
@@ -141,25 +166,10 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
 
             this.address = newServer.getNodeHost();
             this.port = newServer.getNodePort();
-            if (req.getStatus().equals(KVMessage.StatusType.GET)) {
-                return resendRequest(req.getKey(), null, req.getStatus());
-            } else if (req.getStatus().equals(KVMessage.StatusType.PUT)) {
-                return resendRequest(req.getKey(), req.getValue(), req.getStatus());
-            } else {
-                logger.fatal("Unexpected status type " + req.getStatus());
-                return null;
-            }
+            disconnect();
+            connect();
+            return dispatchRequest(req);
         }
         return res;
-    }
-
-    private KVMessage resendRequest(String key, String value, KVMessage.StatusType request) throws IOException {
-        disconnect();
-        connect();
-        if (request.equals(KVMessage.StatusType.PUT)) {
-            return this.put(key, value);
-        } else {
-            return this.get(key);
-        }
     }
 }

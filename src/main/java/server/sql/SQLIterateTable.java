@@ -35,6 +35,7 @@ public class SQLIterateTable implements SQLTable {
     }.getType();
 
     private String name;
+    private String nameHash;
     private KVIterateStore store;
     public Map<String, Class> typeMap;
 
@@ -51,12 +52,10 @@ public class SQLIterateTable implements SQLTable {
 
     public SQLIterateTable(String name, KVIterateStore store, Map<String, Class> typeMap) {
         this.name = name;
+        this.nameHash = ECSNode.calcHash(name);
         this.store = store;
         this.typeMap = typeMap;
         this.typeMap.put(TABLE_COL_ID, String.class);
-        // No longer use primary key system to identify different object
-        // with same values
-//        this.typeMap.put(PRIMARY_KEY, Double.class);
     }
 
     private BiPredicate<String, String> tableSelectWrapper(Predicate<Map<String, Object>> condition) {
@@ -139,10 +138,9 @@ public class SQLIterateTable implements SQLTable {
     @Override
     public synchronized void insert(Map<String, Object> value) throws SQLException, IOException {
         sanityCheck(value);
-        String key = ECSNode.calcHash(mapToJson(value));
         value.put(TABLE_COL_ID, name);
         String val = mapToJson(value);
-        store.appendEntry(new KVIterateStore.KVEntry(key, val));
+        store.appendEntry(new KVIterateStore.KVEntry(nameHash, val));
     }
 
     @Override

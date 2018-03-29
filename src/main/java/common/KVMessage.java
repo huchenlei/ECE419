@@ -24,6 +24,9 @@ public interface KVMessage extends Encodable, Decodable {
         PUT_REPLICATE, // Replication put launched from other server
 
         SQL, // SQL request
+        SQL_REPLICATE,
+        SQL_ERROR,
+        SQL_SUCCESS,
     }
 
     /**
