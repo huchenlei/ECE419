@@ -33,8 +33,16 @@ public class SQLIterateStore implements SQLPersistentStore {
         this.name = name;
         this.prompt = "(" + name + "_SQL_Store):";
         this.store = store;
-        updateTablesMetadata();
+
         try {
+            Stat exists = zk.exists(ZK_TABLE_PATH, false);
+            if (exists == null) {
+                byte[] metadata = SQLIterateTable.gson.toJson(tableMap).getBytes();
+                zk.create(ZK_TABLE_PATH, metadata,
+                        ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+            syncTablesMetadata(null);
+
             zk.exists(ZK_TABLE_PATH, new Watcher() {
                 @Override
                 public void process(WatchedEvent event) {
@@ -80,10 +88,7 @@ public class SQLIterateStore implements SQLPersistentStore {
                 zk.create(ZK_TABLE_PATH, metadata,
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             } else {
-                if (tableMap.size() != 0)
-                    zk.setData(ZK_TABLE_PATH, metadata, exists.getVersion());
-                else
-                    syncTablesMetadata(null);
+                zk.setData(ZK_TABLE_PATH, metadata, exists.getVersion());
             }
         } catch (InterruptedException | KeeperException e) {
             logger.error("Unable to update metadata");
