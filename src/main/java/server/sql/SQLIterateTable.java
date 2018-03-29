@@ -34,6 +34,9 @@ public class SQLIterateTable implements SQLTable {
     private static Type type = new TypeToken<Map<String, Object>>() {
     }.getType();
 
+    private static Type listType = new TypeToken<List<Map<String, Object>>>() {
+    }.getType();
+
     private String name;
     private String nameHash;
     private KVIterateStore store;
@@ -90,6 +93,11 @@ public class SQLIterateTable implements SQLTable {
     public static synchronized Map<String, Object> jsonToMap(String json) {
         return gson.fromJson(json, type);
     }
+
+    public static synchronized List<Map<String, Object>> jsonToMapList(String json) {
+        return gson.fromJson(json, listType);
+    }
+
 
     public static synchronized String mapToJson(Object map) {
         return gson.toJson(map);

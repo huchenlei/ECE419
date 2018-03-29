@@ -57,12 +57,12 @@ public class SQLExecutorTest extends TestCase {
         }
     }
 
-    public void test02CreateTable() {
+    public void test02CreateTable() throws IOException {
         String s = executor.executeSQL("create student age:number,name:string");
         assertEquals("", s);
     }
 
-    public void test03Insert() {
+    public void test03Insert() throws IOException {
         executor = new SQLExecutor(stores.get(0));
         String[] studentNames = {"Alice", "Bob", "Charlie", "David"};
         for (int i = 0; i < studentNames.length; i++) {
@@ -75,7 +75,7 @@ public class SQLExecutorTest extends TestCase {
     private static Type type = new TypeToken<List<Map<String, Object>>>() {
     }.getType();
 
-    public void test04Query() {
+    public void test04Query() throws IOException {
         executor = new SQLExecutor(stores.get(0));
         String result = executor.executeSQL("select name,age from student where name = Alice");
         List<Map<String, Object>> rowList = new Gson().fromJson(result, type);
@@ -86,7 +86,7 @@ public class SQLExecutorTest extends TestCase {
         assertEquals(10d, row.get("age"));
     }
 
-    public void test05Update() {
+    public void test05Update() throws IOException {
         executor = new SQLExecutor(stores.get(0));
         String s = executor.executeSQL("update {'age':100} to student where name = Alice");
         assertEquals(1, Integer.parseInt(s));
@@ -99,13 +99,13 @@ public class SQLExecutorTest extends TestCase {
         assertEquals("Alice", row.get("name"));
     }
 
-    public void test06Delete() {
+    public void test06Delete() throws IOException {
         executor = new SQLExecutor(stores.get(0));
         String s = executor.executeSQL("delete from student where name = Bob");
         assertEquals(1, Integer.parseInt(s));
     }
 
-    public void test07Drop() {
+    public void test07Drop() throws IOException {
         executor = new SQLExecutor(stores.get(0));
         String s = executor.executeSQL("drop student");
         assertEquals("", s);

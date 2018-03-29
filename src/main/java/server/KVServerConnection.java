@@ -8,6 +8,7 @@ import common.messages.AbstractKVMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
+import server.sql.SQLException;
 import server.sql.SQLExecutor;
 
 import java.io.BufferedInputStream;
@@ -216,9 +217,15 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
             case SQL_REPLICATE:
             case SQL: {
-                String result = executor.executeSQL(m.getValue());
                 res.setStatus(KVMessage.StatusType.SQL_SUCCESS);
-                res.setValue(result);
+                try {
+                    String result = executor.executeSQL(m.getValue(),
+                            m.getStatus() == KVMessage.StatusType.SQL_REPLICATE);
+                    res.setValue(result);
+                } catch (IOException | SQLException e) {
+                    res.setStatus(KVMessage.StatusType.SQL_ERROR);
+                    res.setValue(e.getMessage());
+                }
 
                 try {
                     if (m.getStatus() == KVMessage.StatusType.SQL) {

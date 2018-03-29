@@ -39,22 +39,31 @@ public class SQLIterateStore implements SQLPersistentStore {
                 @Override
                 public void process(WatchedEvent event) {
                     if (event.getType().equals(Event.EventType.NodeDataChanged)) {
-                        try {
-                            byte[] data = zk.getData(ZK_TABLE_PATH, this, null);
-                            tableMap = jsonToSQLMap(new String(data));
-                            for (SQLIterateTable table : tableMap.values()) {
-                                table.setStore(store);
-                            }
-                            logger.info(prompt + " table map updated");
-                        } catch (KeeperException | InterruptedException e) {
-                            e.printStackTrace();
-                        }
+                        syncTablesMetadata(this);
                     }
                 }
             });
         } catch (KeeperException | InterruptedException e) {
             logger.error("Unable to register watch on table metadata node");
             logger.error("please check config of zookeeper");
+            e.printStackTrace();
+        }
+    }
+
+    private void syncTablesMetadata(Watcher watcher) {
+        try {
+            byte[] data;
+            if (watcher != null)
+                data = zk.getData(ZK_TABLE_PATH, watcher, null);
+            else
+                data = zk.getData(ZK_TABLE_PATH, false, null);
+
+            tableMap = jsonToSQLMap(new String(data));
+            for (SQLIterateTable table : tableMap.values()) {
+                table.setStore(store);
+            }
+            logger.info(prompt + " table map updated");
+        } catch (KeeperException | InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -71,7 +80,10 @@ public class SQLIterateStore implements SQLPersistentStore {
                 zk.create(ZK_TABLE_PATH, metadata,
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             } else {
-                zk.setData(ZK_TABLE_PATH, metadata, exists.getVersion());
+                if (tableMap.size() != 0)
+                    zk.setData(ZK_TABLE_PATH, metadata, exists.getVersion());
+                else
+                    syncTablesMetadata(null);
             }
         } catch (InterruptedException | KeeperException e) {
             logger.error("Unable to update metadata");

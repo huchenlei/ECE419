@@ -59,6 +59,10 @@ public class ECSLoadTest extends TestCase {
         return "insert " + SQLIterateTable.mapToJson(obj) + " to " + table;
     }
 
+    private static String objQueryString(String table, Map<String, Object> obj) {
+        return "select name,age from " + table + " where name = " + obj.get("name");
+    }
+
     static class TestHelper {
         static final Integer ACCESS_NUM = 64;
 
@@ -75,9 +79,26 @@ public class ECSLoadTest extends TestCase {
                 int randIndex = new Random().nextInt(msgs.size() - 1);
                 KVMessage msg = msgs.get(randIndex);
                 KVStore client = getRandomClient();
+
                 KVMessage ret = client.get(msg.getKey());
                 assertEquals(KVMessage.StatusType.GET_SUCCESS, ret.getStatus());
                 assertEquals(msg.getValue(), ret.getValue());
+            }
+
+            for (Map.Entry<String, List<Map<String, Object>>> entry : sqlObjTable.entrySet()) {
+                for (Map<String, Object> obj : entry.getValue()) {
+                    KVStore client = getRandomClient();
+                    KVMessage ret = client.sql(objQueryString(entry.getKey(), obj));
+                    assertEquals(KVMessage.StatusType.SQL_SUCCESS, ret.getStatus());
+
+                    List<Map<String, Object>> retObjArr = SQLIterateTable.jsonToMapList(ret.getValue());
+                    assertEquals(1, retObjArr.size());
+                    Map<String, Object> retObj = retObjArr.get(0);
+                    assertEquals(obj.get("name"), retObj.get("name"));
+                    assertEquals(obj.get("age"), retObj.get("age"));
+
+                    logger.info(ret.getValue());
+                }
             }
         }
 
@@ -158,14 +179,14 @@ public class ECSLoadTest extends TestCase {
                     KVMessage.StatusType.PUT_UPDATE).contains(ret.getStatus()));
         }
         logger.info("PUT data complete");
-        // Confirm data stored
-        testGetData();
-        logger.info("GET data verification complete");
+
 
         // Test SQL insert
         KVStore client = getRandomClient();
         for (String table : sqlObjTable.keySet()) {
-            KVMessage ret = client.sql("create " + table + " age:number,name:string");
+            KVMessage ret = client.sql("drop " + table);
+            logger.info(ret);
+            ret = client.sql("create " + table + " age:number,name:string");
             assertEquals(KVMessage.StatusType.SQL_SUCCESS, ret.getStatus());
             logger.info(ret.getValue());
         }
@@ -179,6 +200,10 @@ public class ECSLoadTest extends TestCase {
             }
         }
         logger.info("INSERT data to tables complete");
+
+        // Confirm data stored
+        testGetData();
+        logger.info("GET data verification complete");
     }
 
     /**

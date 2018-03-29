@@ -15,9 +15,19 @@ public class SQLExecutor {
         this.store = store;
     }
 
-    public String executeSQL(String sql) {
+    public String executeSQL(String sql) throws IOException {
+        return executeSQL(sql, false);
+    }
+
+    public String executeSQL(String sql, Boolean isForward) throws IOException {
         List<SQLScanner.SQLToken> tokens = SQLScanner.scan(sql);
         SQLParser.SQLAst ast = SQLParser.parse(tokens);
+
+        if (isForward &&
+                Arrays.asList("SELECT", "CREATE", "DROP").contains(ast.action)) {
+            // Coordinator only actions
+            return "";
+        }
 
         String result = "";
         try {
@@ -56,9 +66,7 @@ public class SQLExecutor {
         } catch (IOException e) {
             String err = e.getMessage() + ": " + Arrays.toString(e.getStackTrace());
             logger.error(err);
-            result = err;
-        } catch (SQLException e) {
-            result = e.getMessage();
+            throw e;
         }
 
         return result;
