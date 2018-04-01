@@ -12,6 +12,7 @@ import server.KVIterateStore;
 import server.sql.SQLExecutor;
 import server.sql.SQLIterateStore;
 import server.sql.SQLPersistentStore;
+import server.sql.SQLTable;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -58,6 +59,7 @@ public class SQLExecutorTest extends TestCase {
     }
 
     public void test02CreateTable() throws IOException {
+        executor.executeSQL("drop student");
         String s = executor.executeSQL("create student age:number,name:string");
         assertEquals("", s);
     }
@@ -105,9 +107,16 @@ public class SQLExecutorTest extends TestCase {
         assertEquals(1, Integer.parseInt(s));
     }
 
-    public void test07Drop() throws IOException {
+    public void test07Drop() throws IOException, InterruptedException {
         executor = new SQLExecutor(stores.get(0));
         String s = executor.executeSQL("drop student");
         assertEquals("", s);
+
+        Thread.sleep(200);
+
+        for (SQLPersistentStore store : stores) {
+            SQLTable table = store.getTableByName("student");
+            assertNull(table);
+        }
     }
 }
