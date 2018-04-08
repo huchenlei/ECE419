@@ -273,7 +273,7 @@ public class ECSLoadTest extends TestCase {
     public void test10ShutdownRestore() throws Exception {
         addNodes(1);
         ecs.start();
-        Thread.sleep(200);
+        Thread.sleep(2000);
         testGetData();
 
         ecs.shutdown();

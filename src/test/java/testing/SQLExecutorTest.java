@@ -4,15 +4,13 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import ecs.ECS;
 import junit.framework.TestCase;
+import org.apache.log4j.Logger;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import server.KVIterateStore;
-import server.sql.SQLExecutor;
-import server.sql.SQLIterateStore;
-import server.sql.SQLPersistentStore;
-import server.sql.SQLTable;
+import server.sql.*;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -24,6 +22,7 @@ import java.util.concurrent.CountDownLatch;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SQLExecutorTest extends TestCase {
+    private static Logger logger = Logger.getRootLogger();
     private static SQLExecutor executor;
     private static List<SQLPersistentStore> stores = new ArrayList<>();
 
@@ -59,7 +58,12 @@ public class SQLExecutorTest extends TestCase {
     }
 
     public void test02CreateTable() throws IOException {
-        executor.executeSQL("drop student");
+        try {
+            executor.executeSQL("drop student");
+        } catch (SQLException e) {
+            logger.info("Clean init, no prev student table found");
+        }
+
         String s = executor.executeSQL("create student age:number,name:string");
         assertEquals("", s);
     }
