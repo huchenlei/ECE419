@@ -27,6 +27,9 @@ public interface KVMessage extends Encodable, Decodable {
         SQL_REPLICATE,
         SQL_ERROR,
         SQL_SUCCESS,
+
+        SQL_JOIN,
+        SQL_JOIN_SUCCESS,
     }
 
     /**

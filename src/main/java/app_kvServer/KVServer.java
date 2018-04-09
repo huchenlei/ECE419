@@ -13,6 +13,7 @@ import org.apache.zookeeper.data.Stat;
 import server.*;
 import server.cache.KVCache;
 import server.sql.SQLIterateStore;
+import server.sql.SQLJoinQuerent;
 import server.sql.SQLPersistentStore;
 
 import java.io.*;
@@ -68,7 +69,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
      * Forward put requests to server replicas
      */
     private KVServerForwarderManager forwarderManager;
-
+    private SQLJoinQuerent querent;
     /**
      * SQL storage service
      */
@@ -228,6 +229,9 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                         logger.info(prompt() + "Hash Ring updated");
                         if (forwarderManager != null) {
                             forwarderManager.update(hashRing);
+                        }
+                        if (querent != null) {
+                            querent.updateHashRing(hashRing);
                         }
                     } catch (KeeperException | InterruptedException e) {
                         logger.error(prompt() + "Unable to update the metadata node");
@@ -659,6 +663,10 @@ public class KVServer implements IKVServer, Runnable, Watcher {
 
     public Set<KVServerConnection> conns;
 
+    public SQLJoinQuerent getQuerent() {
+        return querent;
+    }
+
     @Override
     public void run() {
         conns = new HashSet<>();
@@ -677,6 +685,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                 } catch (IOException e) {
                     logger.debug(prompt() + "Unable to establish connection with client.\n", e);
                 }
+
             }
         }
         for (KVServerConnection conn : conns) {
@@ -701,6 +710,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                     + serverSocket.getLocalPort());
             this.port = serverSocket.getLocalPort();
             this.forwarderManager = new KVServerForwarderManager(this.getServerName(), getHostname(), this.port);
+            this.querent = new SQLJoinQuerent(this.getServerName(), hashRing);
             return true;
         } catch (IOException e) {
             logger.error(prompt() + "Error! Cannot open server socket:");

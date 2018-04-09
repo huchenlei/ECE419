@@ -101,8 +101,8 @@ public class ECSLoadTest extends TestCase {
                 }
             }
         }
-
-        static void addNodes(Integer count) throws Exception {
+        static void addNodes(Integer count, ECS ecs, String CACHE_STRATEGY,
+                             Integer CACHE_SIZE, Map<ECSNode, KVServer> serverTable) throws Exception {
             Collection<IECSNode> nodes = ecs.setupNodes(count, CACHE_STRATEGY, CACHE_SIZE);
             assertNotNull(nodes);
             assertEquals(count, new Integer(nodes.size()));
@@ -118,6 +118,9 @@ public class ECSLoadTest extends TestCase {
             }
             boolean ret = ecs.awaitNodes(count, ECS.ZK_TIMEOUT);
             assertTrue(ret);
+        }
+        static void addNodes(Integer count) throws Exception {
+            addNodes(count, ecs, CACHE_STRATEGY, CACHE_SIZE, serverTable);
         }
     }
 

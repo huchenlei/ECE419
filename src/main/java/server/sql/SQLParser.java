@@ -1,9 +1,6 @@
 package server.sql;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class SQLParser {
@@ -15,11 +12,18 @@ public class SQLParser {
         Predicate<Map<String, Object>> conditionFunc = this::defaultAll;
 
         List<String> selectCols;
+        List<String> joinSelectCols;
+
+        boolean isJoin = false;
 
         Map<String, Object> newVal;
         Map<String, Class> schema;
 
         public String table;
+        public String joinTable;
+
+        String onConditionCol;
+        String onConditionJoinCol;
 
         public boolean lt(Map<String, Object> obj) {
             return (Double) obj.get(conditionCol) < conditionComparator;
@@ -60,11 +64,34 @@ public class SQLParser {
                         || tokens.get(3).getType() != SQLScanner.SQLTokenType.VALUE) {
                     throw new SQLException("Invalid select structure");
                 }
-                result.selectCols = Arrays.asList(tokens.get(1).getValue().split(","));
-                result.table = tokens.get(3).value;
+                if (tokens.size() > 8) {
+                    result.isJoin = true;
+                    result.table = tokens.get(3).value;
+                    int onStartIndex = 6;
+                    // Hardcode for join
+                    if (tokens.get(4).getType() == SQLScanner.SQLTokenType.JOIN) {
+                        // NO where condition
+                        result.joinTable = tokens.get(5).value;
 
-                if (tokens.size() > 4) {
-                    parseWhere(tokens.subList(4, tokens.size()), result);
+                    }
+                    else if (tokens.get(8).getType() == SQLScanner.SQLTokenType.JOIN){
+                        result.joinTable = tokens.get(9).value;
+                        parseWhere(tokens.subList(4, 8), result);
+                        onStartIndex = 10;
+                    }
+                    else {
+                        throw new SQLException("Invalid select structure");
+                    }
+
+                    parseJoinCols(tokens.get(1).getValue(), result);
+                    parseJoinON(tokens.subList(onStartIndex, tokens.size()), result);
+                }
+                else {
+                    result.selectCols = Arrays.asList(tokens.get(1).getValue().split(","));
+                    result.table = tokens.get(3).value;
+                    if (tokens.size() > 4) {
+                        parseWhere(tokens.subList(4, tokens.size()), result);
+                    }
                 }
                 break;
             case DELETE:
@@ -126,6 +153,55 @@ public class SQLParser {
         }
         result.action = tokens.get(0).getType().toString();
         return result;
+    }
+
+    private static String[] getColPair(String colString) {
+        String[] result =  colString.split("\\.");
+        if (result.length != 2) {
+            throw new SQLException("invalid col format for join statement");
+        }
+        return result;
+    }
+
+    private static void parseJoinCols(String colString, SQLAst result){
+        String[] cols = colString.split(",");
+        result.selectCols = new ArrayList<>();
+        result.joinSelectCols = new ArrayList<>();
+        for (String col: cols) {
+            String[] vals = getColPair(col);
+            if (vals[0].equals(result.table)) {
+                result.selectCols.add(vals[1]);
+            } else if (vals[0].equals(result.joinTable)) {
+                result.joinSelectCols.add(vals[1]);
+            } else {
+                throw new SQLException("invalid table name in 'TABLE_NAME.COLUMN_NAME'");
+            }
+        }
+    }
+
+    private static void parseJoinON(List<SQLScanner.SQLToken> tokens, SQLAst result) {
+        if (tokens.size() != 4
+                || tokens.get(0).getType() != SQLScanner.SQLTokenType.ON
+                || tokens.get(2).getType() != SQLScanner.SQLTokenType.EQ){
+            throw new SQLException("Invalid on structure");
+        }
+        String[] col1 = getColPair(tokens.get(1).getValue());
+        String[] col2 = getColPair(tokens.get(3).getValue());
+        if (col1[0].equals(result.table) && col2[0].equals(result.joinTable)) {
+            result.onConditionCol = col1[1];
+            result.onConditionJoinCol = col2[1];
+        }
+        else if (col1[0].equals(result.joinTable) && col2[0].equals(result.table)) {
+            result.onConditionCol = col2[1];
+            result.onConditionJoinCol = col1[1];
+        }
+        else {
+            throw new SQLException("Invalid on condition: invalid table name");
+        }
+        if (!result.selectCols.contains(result.onConditionCol)){
+            result.selectCols.add(result.onConditionCol);
+        }
+
     }
 
     private static void parseWhere(List<SQLScanner.SQLToken> tokens, SQLAst result) {

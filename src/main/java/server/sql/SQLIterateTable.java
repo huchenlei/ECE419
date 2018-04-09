@@ -11,10 +11,7 @@ import server.KVIterateStore;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -165,6 +162,21 @@ public class SQLIterateTable implements SQLTable {
     public void drop() throws IOException {
         this.delete(m -> true);
     }
+
+    @Override
+    public Map<String, Map<String, Object>> joinSearch(String colName, List<Object> valueList, List<String> selector)
+            throws SQLException, IOException {
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        for (Object value: valueList){
+            Predicate<Map<String, Object>> predicateFunc = (obj) -> obj.get(colName).equals(value);
+            List<Map<String, Object>> ret = query(selector, predicateFunc);
+            Map<String, Object> firstEntry = ret.iterator().next();
+            result.put(value.toString(), firstEntry);
+        }
+        return result;
+    }
+
+
 }
 
 class ClassAdapter extends TypeAdapter<Class> {

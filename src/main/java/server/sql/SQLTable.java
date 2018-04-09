@@ -55,4 +55,14 @@ public interface SQLTable {
      */
     void drop() throws IOException;
 
+    /**
+     * SQL joinSearch
+     * @param colName
+     * @param valueList
+     * @param selector
+     * @return
+     * @throws SQLException
+     * @throws IOException
+     */
+    Map<String, Map<String, Object>> joinSearch(String colName, List<Object> valueList, List<String> selector) throws SQLException, IOException;
 }

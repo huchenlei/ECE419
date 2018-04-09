@@ -2,9 +2,11 @@ package server;
 
 import app_kvServer.IKVServer;
 import app_kvServer.KVServer;
+import com.google.gson.Gson;
 import common.KVMessage;
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
+import common.messages.SQLJoinMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
@@ -19,6 +21,7 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -42,8 +45,9 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         this.open = true;
         this.setPrompt(kvServer.getServerName());
         this.forwarderManager = kvServer.getForwarderManager();
-        this.executor = new SQLExecutor(kvServer.getSqlStore());
+        this.executor = new SQLExecutor(kvServer.getSqlStore(), kvServer.getQuerent());
     }
+
 
     @Override
     public void run() {
@@ -95,7 +99,8 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
         List<KVMessage.StatusType> allowedTypes = Arrays.asList(
                 KVMessage.StatusType.GET,
                 KVMessage.StatusType.PUT_REPLICATE,
-                KVMessage.StatusType.SQL_REPLICATE);
+                KVMessage.StatusType.SQL_REPLICATE,
+                KVMessage.StatusType.SQL_JOIN);
 
         if (allowedTypes.contains(m.getStatus())) {
             Collection<ECSNode> replicationNodes =
@@ -239,7 +244,23 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                 }
                 break;
             }
+            case SQL_JOIN:
+                res.setStatus(KVMessage.StatusType.SQL_JOIN_SUCCESS);
+                try {
+                    SQLJoinMessage joinMessage = new Gson().fromJson(m.getValue(), SQLJoinMessage.class);
+                    Map<String, Map<String, Object>> resMap = executor.joinSearch(joinMessage.getTableName(),
+                            joinMessage.getJoinColName(), joinMessage.getVals(), joinMessage.getSelector());
 
+                    String result = new Gson().toJson(resMap);
+                    res.setValue(result);
+                } catch (IOException | SQLException e) {
+                    logger.warn("Failed to complete SQL join command!");
+                    logger.warn(e.getMessage());
+                    e.printStackTrace();
+                    res.setStatus(KVMessage.StatusType.SQL_ERROR);
+                }
+
+                break;
             default: {
                 // Status code un-recognized
                 res.setKey("");

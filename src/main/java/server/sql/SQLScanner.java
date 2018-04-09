@@ -14,6 +14,8 @@ public class SQLScanner {
         INSERT,
         DELETE,
         UPDATE,
+        JOIN,
+        ON,
 
         DROP,
         CREATE,
