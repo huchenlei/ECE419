@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -46,12 +47,32 @@ public class Performance {
     private Map<ECSNode, KVServer> serverTable = new HashMap<>();
     private List<ClientPutSession> putSessions = new ArrayList<>();
     private List<ClientGetSession> getSessions = new ArrayList<>();
+    //SQL sessions defined below
+    private long totalCreateLatency;
+    private long totalInsertLatency;
+    private long totalUpdateLatency;
+    private long totalSelectLatency;
+    private long totalDeleteLatency;
+    private long totalDropLatency;
+    
+    private List<ClientCreateSession> createSessions = new ArrayList<>();
+    private List<ClientDropSession> dropSessions = new ArrayList<>();
+    private List<ClientSelectSession> selectSessions = new ArrayList<>();
+    private List<ClientInsertSession> insertSessions = new ArrayList<>();
+    private List<ClientUpdateSession> updateSessions = new ArrayList<>();
+    private List<ClientDeleteSession> deleteSessions = new ArrayList<>();
     private List<KVMessage> msgs = DataParser.parseDataFrom("allen-p/all_documents");
 	
 	public Performance (int cacheSize, String strategy, Integer numNodes, 
 			Integer numClients, int numReq) throws Exception {
 		this.totalGetLatency=0;
 		this.totalPutLatency=0;
+		this.totalCreateLatency=0;
+		this.totalDeleteLatency=0;
+		this.totalDropLatency=0;
+		this.totalInsertLatency=0;
+		this.totalSelectLatency=0;
+		this.totalUpdateLatency=0;
 		this.numReqests = numReq;
 		this.numer_of_servers = numNodes;
 		this.numer_of_clients = numClients;
@@ -96,6 +117,169 @@ public class Performance {
         assertTrue(ret);
     }
     
+    public void startSQLTest() throws Exception {
+    		//clients size should be 1,5,25
+    		//25 class tables, each class table has 50 students and their corresponding marks
+    		int size = this.clients.size();
+    		int j=0;
+    		int[] classList = new int[25];
+    		int[] subList = classList;
+    		for (int i=0; i<25; i++) {
+    			classList[i] = i+1;
+    		}
+    		
+    		for (KVStore client : clients) {
+    			if(size == 1) {
+    				subList = classList;
+    			}
+    			if(size == 5) {
+    				subList = Arrays.copyOfRange(classList, j*25/size, j*25/size+4);
+    			}
+    			if(size == 25) {
+    				subList = Arrays.copyOfRange(classList, j*25/size, j*25/size);
+    			}
+			ClientCreateSession createSession = new ClientCreateSession(client,subList);
+			this.createSessions.add(createSession);
+			for (int num : subList) {
+				ClientInsertSession insertSession = new ClientInsertSession(client,num);
+				this.insertSessions.add(insertSession);
+				ClientUpdateSession updateSession = new ClientUpdateSession(client,num);
+				this.updateSessions.add(updateSession);
+				ClientSelectSession selectSession = new ClientSelectSession(client,num);
+				this.selectSessions.add(selectSession);
+				ClientDeleteSession deleteSession = new ClientDeleteSession(client,num);
+				this.deleteSessions.add(deleteSession);
+			}
+			ClientDropSession dropSession = new ClientDropSession(client,subList);
+			this.dropSessions.add(dropSession);
+    			j+=1;
+    		}
+    		//create latency
+    		long start = System.nanoTime();
+    		for (ClientCreateSession session : createSessions) {
+    			session.start();
+    		}
+    		while (true) {
+    			if (this.createSessions.isEmpty()) {
+    				break;
+    			}
+    			//wait for the client session to be finished
+        		Thread.sleep(100);
+    			for (Iterator<ClientCreateSession> iterator = createSessions.iterator(); iterator.hasNext(); ) {
+    				ClientCreateSession session = iterator.next();
+    				if (session.finishFlag()) {
+    					iterator.remove();
+    				}
+    			}
+    		}
+    		long end = System.nanoTime();
+    		this.totalCreateLatency = end-start;
+    		//insert latency
+    		start = System.nanoTime();
+    		for (ClientInsertSession session : insertSessions) {
+    			session.start();
+    		}
+    		while (true) {
+    			if (this.insertSessions.isEmpty()) {
+    				break;
+    			}
+    			//wait for the client session to be finished
+        		Thread.sleep(500);
+    			for (Iterator<ClientInsertSession> iterator = insertSessions.iterator(); iterator.hasNext(); ) {
+    				ClientInsertSession session = iterator.next();
+    				if (session.finishFlag()) {
+    					iterator.remove();
+    				}
+    			}
+    		}
+    		end = System.nanoTime();
+    		this.totalInsertLatency = end-start;
+    		
+    		//add nodes and remove nodes here
+    		this.addRemoveTest();
+    		
+    		//update latency
+    		start = System.nanoTime();
+    		for (ClientUpdateSession session : updateSessions) {
+    			session.start();
+    		}
+    		while (true) {
+    			if (this.updateSessions.isEmpty()) {
+    				break;
+    			}
+    			//wait for the client session to be finished
+        		Thread.sleep(500);
+    			for (Iterator<ClientUpdateSession> iterator = updateSessions.iterator(); iterator.hasNext(); ) {
+    				ClientUpdateSession session = iterator.next();
+    				if (session.finishFlag()) {
+    					iterator.remove();
+    				}
+    			}
+    		}
+    		end = System.nanoTime();
+    		this.totalUpdateLatency = end-start;
+    		//select latency
+    		start = System.nanoTime();
+    		for (ClientSelectSession session : selectSessions) {
+    			session.start();
+    		}
+    		while (true) {
+    			if (this.selectSessions.isEmpty()) {
+    				break;
+    			}
+    			//wait for the client session to be finished
+        		Thread.sleep(500);
+    			for (Iterator<ClientSelectSession> iterator = selectSessions.iterator(); iterator.hasNext(); ) {
+    				ClientSelectSession session = iterator.next();
+    				if (session.finishFlag()) {
+    					iterator.remove();
+    				}
+    			}
+    		}
+    		end = System.nanoTime();
+    		this.totalSelectLatency = end-start;
+    		//delete latency
+    		start = System.nanoTime();
+    		for (ClientDeleteSession session : deleteSessions) {
+    			session.start();
+    		}
+    		while (true) {
+    			if (this.deleteSessions.isEmpty()) {
+    				break;
+    			}
+    			//wait for the client session to be finished
+        		Thread.sleep(500);
+    			for (Iterator<ClientDeleteSession> iterator = deleteSessions.iterator(); iterator.hasNext(); ) {
+    				ClientDeleteSession session = iterator.next();
+    				if (session.finishFlag()) {
+    					iterator.remove();
+    				}
+    			}
+    		}
+    		end = System.nanoTime();
+    		this.totalDeleteLatency = end-start;
+    		
+    		//drop latency
+    		start = System.nanoTime();
+    		for (ClientDropSession session : dropSessions) {
+    			session.start();
+    		}
+    		while (true) {
+    			if (this.dropSessions.isEmpty()) {
+    				break;
+    			}
+    			//wait for the client session to be finished
+        		Thread.sleep(100);
+    			for (Iterator<ClientDropSession> iterator = dropSessions.iterator(); iterator.hasNext(); ) {
+    				ClientDropSession session = iterator.next();
+    				if (session.finishFlag()) {
+    					iterator.remove();
+    				}
+    			}
+    		}
+    		end = System.nanoTime();
+    		this.totalDropLatency = end-start;    		   		
+    }
     
     public void startTest() throws Exception {
     		int num = this.numReqests / this.clients.size(); 
@@ -146,48 +330,51 @@ public class Performance {
     		}
     		end = System.nanoTime();
     		this.totalGetLatency = end-start;
-    		
-    		start = System.nanoTime();
-    		this.addNodes(1);
-        ecs.start();
-        end = System.nanoTime();
-        this.add1NodesLatency = end - start;
-        Thread.sleep(200);
-        /*    
-    		start = System.nanoTime();
-        this.addNodes(5);
-        ecs.start();
-        end = System.nanoTime();
-        this.add5NodesLatency = end - start;
-        Thread.sleep(200);
         
-         
-    		start = System.nanoTime();
-        this.addNodes(10);
-        ecs.start();
-        end = System.nanoTime();
-        this.add10NodesLatency = end - start;
-        Thread.sleep(200);*/
+    		this.addRemoveTest();
+    }
+    
+    public void addRemoveTest() throws Exception {
+    		long start = System.nanoTime();
+		this.addNodes(1);
+		ecs.start();
+		long end = System.nanoTime();
+		this.add1NodesLatency = end - start;
+		Thread.sleep(200);
         
-        /*
-        start = System.nanoTime();
+		start = System.nanoTime();
+		this.addNodes(5);
+		ecs.start();
+		end = System.nanoTime();
+		this.add5NodesLatency = end - start;
+		Thread.sleep(200);
+    
+     
+		start = System.nanoTime();
+		this.addNodes(10);
+		ecs.start();
+		end = System.nanoTime();
+		this.add10NodesLatency = end - start;
+		Thread.sleep(200);
+    
+    
+		start = System.nanoTime();
 		this.RemoveNodes(1);
 		end = System.nanoTime();
 		this.remove1NodesLatency = end - start;
 		Thread.sleep(200);
-		
-        start = System.nanoTime();
+	
+		start = System.nanoTime();
 		this.RemoveNodes(5);
 		end = System.nanoTime();
 		this.remove5NodesLatency = end - start;
 		Thread.sleep(200);
-		
-        start = System.nanoTime();
+	
+		start = System.nanoTime();
 		this.RemoveNodes(10);
 		end = System.nanoTime();
 		this.remove10NodesLatency = end - start;
 		Thread.sleep(200);
-        */    
     }
     
     public void RemoveNodes(Integer number) throws Exception {
@@ -251,6 +438,43 @@ public class Performance {
 		return this.remove10NodesLatency/1000000;
 	}
 	
+	public float averageCreateLatency() {
+		float averageCreateLat = this.totalCreateLatency / 25;
+		System.out.println("Average create latency in mili seconds is:" + averageCreateLat/1000000 );
+		return averageCreateLat/1000000;
+	}
+	
+	public float averageDropLatency() {
+		float averageDropLat = this.totalDropLatency / 25;
+		System.out.println("Average drop latency in mili seconds is:" + averageDropLat/1000000 );
+		return averageDropLat/1000000;
+	}
+	
+	public float averageInsertLatency() {
+		float averageInsertLat = this.totalInsertLatency / (25*50);
+		System.out.println("Average insert latency in mili seconds is:" + averageInsertLat/1000000 );
+		return averageInsertLat/1000000;
+	}
+	
+	public float averageUpdateLatency() {
+		float averageUpdateLat = this.totalUpdateLatency / (25*50);
+		System.out.println("Average update latency in mili seconds is:" + averageUpdateLat/1000000 );
+		return averageUpdateLat/1000000;
+	}
+	
+	public float averageDeleteLatency() {
+		float averageDeleteLat = this.totalDeleteLatency / (25*50);
+		System.out.println("Average delete latency in mili seconds is:" + averageDeleteLat/1000000 );
+		return averageDeleteLat/1000000;
+	}
+	
+	public float averageSelectLatency() {
+		float averageSelectLat = this.totalSelectLatency / (25*50);
+		System.out.println("Average select latency in mili seconds is:" + averageSelectLat/1000000 );
+		return averageSelectLat/1000000;
+	}
+	
+	
 	public void Shutdown() throws Exception {
         boolean ret = this.ecs.shutdown();
         Thread.sleep(2000);
@@ -265,13 +489,14 @@ public class Performance {
 		int numRequest=10;
 		String cacheStrategy = "FIFO";
 		int numClients = 1;
-		int numServers = 5;
+		int numServers = 1;
 
 		try {
 			 new LogSetup("logs/testing/performance.log", Level.ERROR);
 			 Performance performance = new Performance(cacheSize, cacheStrategy, 
 					 numServers, numClients, numRequest);
-			 performance.startTest();
+			 //performance.startTest();
+			 performance.startSQLTest();
 			 //latency to add 1, 5, 10 nodes
 			 performance.get1AddNodesTime();
 			 performance.get5AddNodesTime();
@@ -279,9 +504,17 @@ public class Performance {
 			 performance.get1RemoveNodesTime();
 			 performance.get5RemoveNodesTime();
 			 performance.get10RemoveNodesTime();
+			 performance.averageCreateLatency();
+			 performance.averageSelectLatency();
+			 performance.averageInsertLatency();
+			 performance.averageUpdateLatency();
+			 performance.averageDeleteLatency();
+			 performance.averageDropLatency();
+			 /*
 			 performance.averageLatency();
 			 performance.averageGetLatency();
 			 performance.averagePutLatency();
+			 */
 			 performance.Shutdown();
 		}
 		catch (Exception e) {
@@ -358,6 +591,192 @@ class ClientPutSession extends Thread {
 			}
 			this.finishRequests = true;
 			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	} 
+}
+
+class ClientCreateSession extends Thread {
+	private KVStore client;
+	private int[] number;
+	private boolean finishRequests;
+	
+	public ClientCreateSession(KVStore store, int[] classNumber) {
+		this.client = store;
+		this.number = classNumber;
+		this.finishRequests = false;
+	}
+	
+	public boolean finishFlag() {
+		return this.finishRequests;
+	}
+	
+	@Override
+	public void run(){  
+		try {
+			for(int i=0; i< number.length; i++) {
+				client.sql("create class" + Integer.toString(number[i]) + " name:string,mark:number");
+			}
+			this.finishRequests = true;
+	
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	} 
+}
+
+class ClientDropSession extends Thread {
+	private KVStore client;
+	private int[] number;
+	private boolean finishRequests;
+	
+	public ClientDropSession(KVStore store, int[] classNumber) {
+		this.client = store;
+		this.number = classNumber;
+		this.finishRequests = false;
+	}
+	
+	public boolean finishFlag() {
+		return this.finishRequests;
+	}
+	
+	@Override
+	public void run(){  
+		try {
+			for(int i=0; i< number.length; i++) {
+				client.sql("drop class" + Integer.toString(number[i]));
+			}
+			this.finishRequests = true;
+	
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	} 
+}
+
+class ClientInsertSession extends Thread {
+	private KVStore client;
+	private int number;
+	private int mark;
+	private boolean finishRequests;
+	
+	public ClientInsertSession(KVStore store, int classNumber) {
+		this.client = store;
+		this.number = classNumber;
+		this.finishRequests = false;
+	}
+	
+	public boolean finishFlag() {
+		return this.finishRequests;
+	}
+	
+	@Override
+	public void run(){  
+		try {
+			Random rand = new Random();
+			//insert 50 students to each class
+			for(int i=0; i< 50; i++) {
+				mark = rand.nextInt(100);
+				String studentJson = "{'name':'student" + Integer.toString(i) + "','mark':" + mark + "}";
+				client.sql("insert " + studentJson + " to class" + Integer.toString(number));
+			}
+			this.finishRequests = true;
+	
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	} 
+}
+
+class ClientUpdateSession extends Thread {
+	private KVStore client;
+	private int number;
+	private int mark;
+	private boolean finishRequests;
+	
+	public ClientUpdateSession(KVStore store, int classNumber) {
+		this.client = store;
+		this.number = classNumber;
+		this.finishRequests = false;
+	}
+	
+	public boolean finishFlag() {
+		return this.finishRequests;
+	}
+	
+	@Override
+	public void run(){  
+		try {
+			Random rand = new Random();
+			//update 50 students to each class
+			for(int i=0; i< 50; i++) {
+				mark = rand.nextInt(100);
+				client.sql("update {'mark':" + mark + "} to class" + Integer.toString(number)+ 
+						" where name = student" + Integer.toString(i));
+			}
+			this.finishRequests = true;
+	
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	} 
+}
+
+class ClientSelectSession extends Thread {
+	private KVStore client;
+	private int number;
+	private boolean finishRequests;
+	
+	public ClientSelectSession(KVStore store, int classNumber) {
+		this.client = store;
+		this.number = classNumber;
+		this.finishRequests = false;
+	}
+	
+	public boolean finishFlag() {
+		return this.finishRequests;
+	}
+	
+	@Override
+	public void run(){  
+		try {
+			for(int i=0; i< 50; i++) {
+				client.sql("select mark from class" + Integer.toString(number) + 
+						" where name = student"+ Integer.toString(i));
+			}
+			this.finishRequests = true;
+	
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	} 
+}
+
+class ClientDeleteSession extends Thread {
+	private KVStore client;
+	private int number;
+	private boolean finishRequests;
+	
+	public ClientDeleteSession(KVStore store, int classNumber) {
+		this.client = store;
+		this.number = classNumber;
+		this.finishRequests = false;
+	}
+	
+	public boolean finishFlag() {
+		return this.finishRequests;
+	}
+	
+	@Override
+	public void run(){  
+		try {
+			for(int i=0; i< 50; i++) {
+				client.sql("delete from class" + Integer.toString(number) + 
+						" where name = student"+ Integer.toString(i));
+			}
+			this.finishRequests = true;
+	
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
