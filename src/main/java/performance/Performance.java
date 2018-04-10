@@ -140,16 +140,16 @@ public class Performance {
     			}
 			ClientCreateSession createSession = new ClientCreateSession(client,subList);
 			this.createSessions.add(createSession);
-			for (int num : subList) {
-				ClientInsertSession insertSession = new ClientInsertSession(client,num);
-				this.insertSessions.add(insertSession);
-				ClientUpdateSession updateSession = new ClientUpdateSession(client,num);
-				this.updateSessions.add(updateSession);
-				ClientSelectSession selectSession = new ClientSelectSession(client,num);
-				this.selectSessions.add(selectSession);
-				ClientDeleteSession deleteSession = new ClientDeleteSession(client,num);
-				this.deleteSessions.add(deleteSession);
-			}
+
+			ClientInsertSession insertSession = new ClientInsertSession(client,subList);
+			this.insertSessions.add(insertSession);
+			ClientUpdateSession updateSession = new ClientUpdateSession(client,subList);
+			this.updateSessions.add(updateSession);
+			ClientSelectSession selectSession = new ClientSelectSession(client,subList);
+			this.selectSessions.add(selectSession);
+			ClientDeleteSession deleteSession = new ClientDeleteSession(client,subList);
+			this.deleteSessions.add(deleteSession);
+			
 			ClientDropSession dropSession = new ClientDropSession(client,subList);
 			this.dropSessions.add(dropSession);
     			j+=1;
@@ -657,11 +657,11 @@ class ClientDropSession extends Thread {
 
 class ClientInsertSession extends Thread {
 	private KVStore client;
-	private int number;
+	private int[] number;
 	private int mark;
 	private boolean finishRequests;
 	
-	public ClientInsertSession(KVStore store, int classNumber) {
+	public ClientInsertSession(KVStore store, int[] classNumber) {
 		this.client = store;
 		this.number = classNumber;
 		this.finishRequests = false;
@@ -676,10 +676,12 @@ class ClientInsertSession extends Thread {
 		try {
 			Random rand = new Random();
 			//insert 50 students to each class
-			for(int i=0; i< 50; i++) {
-				mark = rand.nextInt(100);
-				String studentJson = "{'name':'student" + Integer.toString(i) + "','mark':" + mark + "}";
-				client.sql("insert " + studentJson + " to class" + Integer.toString(number));
+			for(int j=0; j<number.length; j++) {
+				for(int i=0; i< 50; i++) {
+					mark = rand.nextInt(100);
+					String studentJson = "{'name':'student" + Integer.toString(i) + "','mark':" + mark + "}";
+					client.sql("insert " + studentJson + " to class" + Integer.toString(number[j]));
+				}
 			}
 			this.finishRequests = true;
 	
@@ -691,11 +693,11 @@ class ClientInsertSession extends Thread {
 
 class ClientUpdateSession extends Thread {
 	private KVStore client;
-	private int number;
+	private int[] number;
 	private int mark;
 	private boolean finishRequests;
 	
-	public ClientUpdateSession(KVStore store, int classNumber) {
+	public ClientUpdateSession(KVStore store, int[] classNumber) {
 		this.client = store;
 		this.number = classNumber;
 		this.finishRequests = false;
@@ -710,10 +712,12 @@ class ClientUpdateSession extends Thread {
 		try {
 			Random rand = new Random();
 			//update 50 students to each class
-			for(int i=0; i< 50; i++) {
-				mark = rand.nextInt(100);
-				client.sql("update {'mark':" + mark + "} to class" + Integer.toString(number)+ 
-						" where name = student" + Integer.toString(i));
+			for(int j=0; j<number.length; j++) {
+				for(int i=0; i< 50; i++) {
+					mark = rand.nextInt(100);
+					client.sql("update {'mark':" + mark + "} to class" + Integer.toString(number[j])+ 
+							" where name = student" + Integer.toString(i));
+				}
 			}
 			this.finishRequests = true;
 	
@@ -725,10 +729,10 @@ class ClientUpdateSession extends Thread {
 
 class ClientSelectSession extends Thread {
 	private KVStore client;
-	private int number;
+	private int[] number;
 	private boolean finishRequests;
 	
-	public ClientSelectSession(KVStore store, int classNumber) {
+	public ClientSelectSession(KVStore store, int[] classNumber) {
 		this.client = store;
 		this.number = classNumber;
 		this.finishRequests = false;
@@ -741,9 +745,11 @@ class ClientSelectSession extends Thread {
 	@Override
 	public void run(){  
 		try {
-			for(int i=0; i< 50; i++) {
-				client.sql("select mark from class" + Integer.toString(number) + 
-						" where name = student"+ Integer.toString(i));
+			for(int j=0; j<number.length; j++) {
+				for(int i=0; i< 50; i++) {
+					client.sql("select mark from class" + Integer.toString(number[j]) + 
+							" where name = student"+ Integer.toString(i));
+				}
 			}
 			this.finishRequests = true;
 	
@@ -755,10 +761,10 @@ class ClientSelectSession extends Thread {
 
 class ClientDeleteSession extends Thread {
 	private KVStore client;
-	private int number;
+	private int[] number;
 	private boolean finishRequests;
 	
-	public ClientDeleteSession(KVStore store, int classNumber) {
+	public ClientDeleteSession(KVStore store, int[] classNumber) {
 		this.client = store;
 		this.number = classNumber;
 		this.finishRequests = false;
@@ -771,9 +777,11 @@ class ClientDeleteSession extends Thread {
 	@Override
 	public void run(){  
 		try {
-			for(int i=0; i< 50; i++) {
-				client.sql("delete from class" + Integer.toString(number) + 
-						" where name = student"+ Integer.toString(i));
+			for(int j=0; j<number.length; j++) {
+				for(int i=0; i< 50; i++) {
+					client.sql("delete from class" + Integer.toString(number[j]) + 
+							" where name = student"+ Integer.toString(i));
+				}
 			}
 			this.finishRequests = true;
 	
