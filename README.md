@@ -23,5 +23,11 @@ Implement data replication and failure detection.
 ### [Milestone 4](https://docs.google.com/document/d/1XmDqCLKKJOYsaCNXoYgsTDw77uT7QgZ6WLIQ6SjfXG8/edit?usp=sharing)
 Implement SQL table and query support.
 
+## Design Documents
+The following are design documents for each milestone
+- [Milestone 1](https://docs.google.com/document/d/1-1dl0WZyPXWq0PKsVMlnJPgxWG6EHMs3nNiDDN3Bm2E/edit?usp=sharing)
+- [Milestone 2](https://docs.google.com/document/d/1eWGEeILBPNOEKJ3NYWmEtE_o_nLaGBNXL_QARaNzQ94/edit?usp=sharing)
+- [Milestone 3](https://docs.google.com/document/d/15S0y4P5cxo6H_ncQlsmvBMlK0RXEDU3OnjIJdAqoU24/edit?usp=sharing)
+- [Milestone 4](https://docs.google.com/document/d/18VQnwBxV1XHS8uTRME5qZbPWRjT_KYIGcTXh4onI8jE/edit?usp=sharing)
 
  
