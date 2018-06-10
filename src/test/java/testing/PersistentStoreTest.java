@@ -1,6 +1,6 @@
 package testing;
 
-import common.KVMessage;
+import common.messages.KVMessage;
 import ecs.ECSNode;
 import junit.framework.TestCase;
 import logger.LogSetup;

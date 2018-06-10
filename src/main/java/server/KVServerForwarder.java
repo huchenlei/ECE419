@@ -1,8 +1,8 @@
 package server;
 
-import common.KVMessage;
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
+import common.messages.KVMessage;
 import common.messages.TextMessage;
 import ecs.ECSNode;
 
@@ -35,8 +35,8 @@ public class KVServerForwarder extends AbstractKVConnection {
     }
 
     public void forward(KVMessage message) throws IOException, ForwardFailedException {
-        KVMessage req = AbstractKVMessage.createMessage();
-        KVMessage res = AbstractKVMessage.createMessage();
+        AbstractKVMessage req = AbstractKVMessage.createMessage();
+        AbstractKVMessage res = AbstractKVMessage.createMessage();
 
         assert req != null;
         assert res != null;

@@ -2,10 +2,9 @@ package server.sql;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import common.KVMessage;
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
-import common.messages.KVAdminMessage;
+import common.messages.KVMessage;
 import common.messages.SQLJoinMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
@@ -32,8 +31,8 @@ public class SQLJoinQuerent extends AbstractKVConnection{
 
     public Map<String, Map<String, Object>> queryJoin(String tableName, String joinColName,
                                                       List<Object> vals, List<String> selector) throws Exception{
-        KVMessage req = AbstractKVMessage.createMessage();
-        KVMessage res = AbstractKVMessage.createMessage();
+        AbstractKVMessage req = AbstractKVMessage.createMessage();
+        AbstractKVMessage res = AbstractKVMessage.createMessage();
 
         req.setKey(ECSNode.calcHash(tableName));
         if (hashRing == null) {

@@ -1,9 +1,6 @@
-package common;
+package common.messages;
 
-import common.messages.Decodable;
-import common.messages.Encodable;
-
-public interface KVMessage extends Encodable, Decodable {
+public interface KVMessage {
     enum StatusType {
         GET,            /* Get - request */
         GET_ERROR,        /* requested tuple (i.e. value) not found */

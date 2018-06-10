@@ -1,6 +1,5 @@
 package common.messages;
 
-import common.KVMessage;
 import org.apache.log4j.Logger;
 
 import java.lang.reflect.Constructor;
@@ -13,20 +12,20 @@ import java.lang.reflect.InvocationTargetException;
  * <p>
  * Created by Charlie on 2018-01-12.
  */
-public abstract class AbstractKVMessage implements KVMessage {
+public abstract class AbstractKVMessage implements KVMessage, Encodable, Decodable {
     private static Logger logger = Logger.getRootLogger();
 
     /**
      * The default class of message to create
      */
-    public static final Class<? extends KVMessage> defaultMessageClass = JsonKVMessage.class;
+    public static final Class<? extends AbstractKVMessage> defaultMessageClass = JsonKVMessage.class;
 
     /**
      * Current using class of message (used in both client and server side)
      * Change this to use different message protocols
      */
-    public static Class<? extends KVMessage> currentMessageClass = defaultMessageClass;
-    private static Constructor<?> currentConstructor;
+    public static Class<? extends AbstractKVMessage> currentMessageClass = defaultMessageClass;
+    private static Constructor<? extends AbstractKVMessage> currentConstructor;
 
     static {
         try {
@@ -37,9 +36,9 @@ public abstract class AbstractKVMessage implements KVMessage {
         }
     }
 
-    public static KVMessage createMessage() {
+    public static AbstractKVMessage createMessage() {
         try {
-            return (KVMessage) currentConstructor.newInstance();
+            return currentConstructor.newInstance();
         } catch (InstantiationException |
                 IllegalAccessException |
                 InvocationTargetException e) {

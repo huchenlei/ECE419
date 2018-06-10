@@ -2,7 +2,7 @@ package performance;
 
 import app_kvServer.KVServer;
 import common.messages.JsonKVMessage;
-import common.KVMessage;
+import common.messages.KVMessage;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.RegexFileFilter;

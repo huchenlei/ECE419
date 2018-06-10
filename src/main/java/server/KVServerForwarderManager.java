@@ -1,6 +1,6 @@
 package server;
 
-import common.KVMessage;
+import common.messages.KVMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
 import org.apache.log4j.Logger;

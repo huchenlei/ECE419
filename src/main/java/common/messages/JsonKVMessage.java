@@ -7,22 +7,6 @@ import com.google.gson.Gson;
  * server and client
  */
 public class JsonKVMessage extends AbstractKVMessage {
-    // TODO to be removed after tester bug is fixed by TA
-    @Override
-    public String getKey() {
-        return key;
-    }
-
-    @Override
-    public String getValue() {
-        return value;
-    }
-
-    @Override
-    public StatusType getStatus() {
-        return status;
-    }
-
     @Override
     public String encode() {
         return new Gson().toJson(this);

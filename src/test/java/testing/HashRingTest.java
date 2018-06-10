@@ -1,5 +1,6 @@
 package testing;
-import common.KVMessage;
+
+import common.messages.KVMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
 import junit.framework.TestCase;
@@ -9,8 +10,6 @@ import org.apache.log4j.Logger;
 import org.junit.Before;
 import performance.DataParser;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 

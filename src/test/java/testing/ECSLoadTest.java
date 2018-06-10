@@ -2,7 +2,7 @@ package testing;
 
 import app_kvServer.KVServer;
 import client.KVStore;
-import common.KVMessage;
+import common.messages.KVMessage;
 import ecs.ECS;
 import ecs.ECSNode;
 import ecs.IECSNode;

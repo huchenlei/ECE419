@@ -1,6 +1,6 @@
 package testing;
 import app_kvServer.KVServer;
-import common.KVMessage;
+import common.messages.KVMessage;
 import ecs.ECS;
 import ecs.ECSNode;
 import junit.framework.TestCase;

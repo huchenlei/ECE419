@@ -1,8 +1,8 @@
 package client;
 
-import common.KVMessage;
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
+import common.messages.KVMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
 import ecs.ECSNode;
@@ -35,17 +35,17 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
     }
 
     private KVMessage request(KVMessage req) throws IOException {
-        KVMessage res = AbstractKVMessage.createMessage();
+        AbstractKVMessage res = AbstractKVMessage.createMessage();
         assert res != null;
         try {
             //if metadata is not null, find the server responsible for the key
             dispatchToCorrectServer(req);
-            sendMessage(new TextMessage(req.encode()));
+            sendMessage(new TextMessage(((AbstractKVMessage) req).encode()));
             res.decode(receiveMessage().getMsg());
-            res = handleNotResponsible(req, res);
+            res = handleNotResponsible((AbstractKVMessage) req, res);
         } catch (IOException e) {
             logger.warn(e.getMessage());
-            res = handleShutdown(req);
+            res = (AbstractKVMessage) handleShutdown((AbstractKVMessage) req);
             if (res == null) {
                 System.out.println(PROMPT + "Error! " + "All Servers Not In Service");
                 disconnect();
@@ -89,7 +89,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
     }
 
 
-    private KVMessage handleShutdown(KVMessage req) {
+    private KVMessage handleShutdown(AbstractKVMessage req) {
         disconnect();
         String hash = ECSNode.calcHash(req.getKey());
         if (hashRing.empty()) {
@@ -114,14 +114,14 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         }
     }
 
-    private KVMessage dispatchRequest(KVMessage req) throws IOException {
+    private AbstractKVMessage dispatchRequest(AbstractKVMessage req) throws IOException {
         switch (req.getStatus()) {
             case PUT:
-                return this.put(req.getKey(), req.getValue());
+                return (AbstractKVMessage) this.put(req.getKey(), req.getValue());
             case GET:
-                return this.get(req.getKey());
+                return (AbstractKVMessage) this.get(req.getKey());
             case SQL:
-                return this.sql(req.getValue());
+                return (AbstractKVMessage) this.sql(req.getValue());
             default:
                 return null;
         }
@@ -152,7 +152,7 @@ public class KVStore extends AbstractKVConnection implements KVCommInterface {
         connect();
     }
 
-    private KVMessage handleNotResponsible(KVMessage req, KVMessage res) throws IOException {
+    private AbstractKVMessage handleNotResponsible(AbstractKVMessage req, AbstractKVMessage res) throws IOException {
         if (res.getStatus().equals(KVMessage.StatusType.SERVER_NOT_RESPONSIBLE)) {
             String hashRingString = res.getValue();
             hashRing = new ECSHashRing(hashRingString);

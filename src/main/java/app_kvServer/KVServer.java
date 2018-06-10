@@ -98,7 +98,7 @@ public class KVServer implements IKVServer, Runnable, Watcher {
      *                  currently not contained in the cache. Options are "FIFO", "LRU",
      *                  and "LFU".
      */
-    public KVServer(int port, int cacheSize, String strategy) {
+    public KVServer(Integer port, Integer cacheSize, String strategy) {
         this(port, cacheSize, strategy, "iterateDataBase"); // Default db name
     }
 
@@ -209,8 +209,8 @@ public class KVServer implements IKVServer, Runnable, Watcher {
                         ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
                 logger.info(prompt() + "Alive node created");
             } else {
-				logger.fatal(prompt() + "Active root not exist!");
-			}
+                logger.fatal(prompt() + "Active root not exist!");
+            }
 
         } catch (KeeperException | InterruptedException e) {
             logger.error(prompt() + "Unable to create an ephemeral node");
@@ -526,14 +526,16 @@ public class KVServer implements IKVServer, Runnable, Watcher {
             if (forwarderManager != null)
                 forwarderManager.clear();
 
-            String alivePath = ECS.ZK_ACTIVE_ROOT + "/" + this.serverName;
-            if (zk.exists(alivePath, false) != null) {
-                zk.delete(alivePath, zk.exists(alivePath, false).getVersion());
-                logger.info(prompt() + "Remove exist alive node");
-            } else {
-				logger.error(prompt() + alivePath + " NOT exist!");
-			}
-            zk.close();
+            if (isDistributed) {
+                String alivePath = ECS.ZK_ACTIVE_ROOT + "/" + this.serverName;
+                if (zk.exists(alivePath, false) != null) {
+                    zk.delete(alivePath, zk.exists(alivePath, false).getVersion());
+                    logger.info(prompt() + "Remove exist alive node");
+                } else {
+                    logger.error(prompt() + alivePath + " NOT exist!");
+                }
+                zk.close();
+            }
         } catch (IOException e) {
             logger.error(prompt() + "Unable to close socket on port: " + port, e);
         } catch (InterruptedException e) {

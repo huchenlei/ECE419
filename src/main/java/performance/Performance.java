@@ -1,29 +1,19 @@
 package performance;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.stream.Collectors;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-
 import app_kvServer.KVServer;
 import client.KVStore;
-import common.KVMessage;
+import common.messages.KVMessage;
 import ecs.ECS;
 import ecs.ECSNode;
 import ecs.IECSNode;
 import logger.LogSetup;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.junit.Assert.*;
 
 public class Performance {
 	
@@ -376,8 +366,8 @@ public class Performance {
 		this.remove10NodesLatency = end - start;
 		Thread.sleep(200);
     }
-    
-    public void RemoveNodes(Integer number) throws Exception {
+
+    public void RemoveNodes(Integer number) {
         ArrayList<ECSNode> nodes = new ArrayList<>(serverTable.keySet());
         // Remove the first two nodes
         List<ECSNode> toRemove = nodes.subList(0, number);

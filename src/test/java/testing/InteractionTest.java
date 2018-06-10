@@ -1,10 +1,10 @@
 package testing;
-import org.junit.Test;
 
 import client.KVStore;
+import common.messages.KVMessage;
+import common.messages.KVMessage.StatusType;
 import junit.framework.TestCase;
-import common.KVMessage;
-import common.KVMessage.StatusType;
+import org.junit.Test;
 
 
 public class InteractionTest extends TestCase {
@@ -130,7 +130,7 @@ public class InteractionTest extends TestCase {
     // Following are extra tests added
     private static final Integer MAX_VALUE_SIZE = 120 * 1024;
     @Test
-    public void testBadValues() throws Exception {
+    public void testBadValues() {
         // Max val is 120 kb
         // build a string of 120kb + 1byte long
         StringBuilder sb = new StringBuilder();

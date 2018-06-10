@@ -3,9 +3,9 @@ package server;
 import app_kvServer.IKVServer;
 import app_kvServer.KVServer;
 import com.google.gson.Gson;
-import common.KVMessage;
 import common.connection.AbstractKVConnection;
 import common.messages.AbstractKVMessage;
+import common.messages.KVMessage;
 import common.messages.SQLJoinMessage;
 import common.messages.TextMessage;
 import ecs.ECSHashRing;
@@ -57,7 +57,7 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
 
             while (isOpen()) {
                 try {
-                    KVMessage req = AbstractKVMessage.createMessage();
+                    AbstractKVMessage req = AbstractKVMessage.createMessage();
                     assert req != null;
                     req.decode(receiveMessage().getMsg());
                     if (!kvServer.isRunning()) {
@@ -65,10 +65,8 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
                         disconnect();
                         return;
                     }
-                    KVMessage res;
 
-                    res = handleMsg(req);
-
+                    AbstractKVMessage res = handleMsg(req);
                     sendMessage(new TextMessage(res.encode()));
                 } catch (IOException ioe) {
                     logger.warn("Connection lost (" + this.clientSocket.getInetAddress().getHostName()
@@ -119,8 +117,8 @@ public class KVServerConnection extends AbstractKVConnection implements Runnable
      * @param m message object
      * @return response string to client
      */
-    private KVMessage handleMsg(KVMessage m) {
-        KVMessage res = AbstractKVMessage.createMessage();
+    private AbstractKVMessage handleMsg(AbstractKVMessage m) {
+        AbstractKVMessage res = AbstractKVMessage.createMessage();
         assert res != null;
         res.setKey(m.getKey());
 

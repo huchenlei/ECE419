@@ -1,6 +1,6 @@
 package client;
 
-import common.KVMessage;
+import common.messages.KVMessage;
 
 public interface KVCommInterface {
 

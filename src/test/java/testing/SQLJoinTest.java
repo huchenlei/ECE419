@@ -2,18 +2,19 @@ package testing;
 
 import app_kvServer.KVServer;
 import client.KVStore;
-import common.KVMessage;
+import common.messages.KVMessage;
 import ecs.ECS;
 import ecs.ECSNode;
-import ecs.IECSNode;
 import junit.framework.TestCase;
 import org.apache.log4j.Logger;
 import server.sql.SQLIterateTable;
 import server.sql.SQLParser;
 import server.sql.SQLScanner;
 
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static testing.ECSLoadTest.TestHelper.addNodes;
 
@@ -73,7 +74,7 @@ public class SQLJoinTest extends TestCase {
         ecs.clearRestoreList();
         ecs.locally = true;
 
-        addNodes(15, this.ecs, "FIFO", 32, this.serverTable);
+        addNodes(15, ecs, "FIFO", 32, serverTable);
         KVServer server = serverTable.entrySet().iterator().next().getValue();
         KVStore store = new KVStore(server.getHostname(), server.getPort());
         store.connect();
